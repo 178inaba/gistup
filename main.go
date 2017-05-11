@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/oauth2"
 
 	"github.com/google/go-github/github"
 	"github.com/howeyc/gopass"
@@ -27,28 +30,21 @@ func run() int {
 		}
 	}
 
-	fmt.Println(token)
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	c := github.NewClient(oauth2.NewClient(ctx, ts))
+	g, _, err := c.Gists.Create(ctx, &github.Gist{
+		Files: map[github.GistFilename]github.GistFile{
+			"main.go": github.GistFile{Content: github.String("package main")},
+		},
+		Public: github.Bool(false),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(*g.HTMLURL)
 	return 0
-
-	// ctx := context.Background()
-	// c := github.NewClient(nil)
-	// c.Authorizations.Create(ctx, &github.AuthorizationRequest{
-	// 	Scopes:      []github.Scope{"gist"},
-	// 	Note:        github.String("gistup"),
-	// 	Fingerprint: github.String("gistup"),
-	// })
-
-	// g, _, err := c.Gists.Create(ctx, &github.Gist{
-	// 	Files: map[github.GistFilename]github.GistFile{
-	// 		"main.go": github.GistFile{Content: github.String("package main")},
-	// 	},
-	// 	Public: github.Bool(false),
-	// })
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// fmt.Println(*g.HTMLURL)
 }
 
 func loadToken() (string, error) {
