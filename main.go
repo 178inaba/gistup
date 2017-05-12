@@ -33,9 +33,30 @@ func run() int {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	c := github.NewClient(oauth2.NewClient(ctx, ts))
+
+	fileName := os.Args[1]
+	var fp string
+	if filepath.IsAbs(fileName) {
+		fp = fileName
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		fp = filepath.Join(wd, fileName)
+	}
+	fileName = filepath.Base(fileName)
+
+	content, err := readFile(fp)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
 	g, _, err := c.Gists.Create(ctx, &github.Gist{
 		Files: map[github.GistFilename]github.GistFile{
-			"main.go": github.GistFile{Content: github.String("package main")},
+			github.GistFilename(fileName): github.GistFile{Content: github.String(content)},
 		},
 		Public: github.Bool(false),
 	})
@@ -47,24 +68,28 @@ func run() int {
 	return 0
 }
 
+func readFile(fp string) (string, error) {
+	f, err := os.Open(fp)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	bs, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bs), nil
+}
+
 func loadToken() (string, error) {
 	configFilePath, err := getConfigFilePath()
 	if err != nil {
 		return "", err
 	}
 
-	configFile, err := os.Open(configFilePath)
-	if err != nil {
-		return "", err
-	}
-	defer configFile.Close()
-
-	tBytes, err := ioutil.ReadAll(configFile)
-	if err != nil {
-		return "", err
-	}
-
-	return string(tBytes), nil
+	return readFile(configFilePath)
 }
 
 func getToken() (string, error) {
