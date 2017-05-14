@@ -143,5 +143,5 @@ func getConfigFilePath() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(home, ".config/gistup/config.toml"), nil
+	return filepath.Join(home, ".config/gistup/token"), nil
 }
