@@ -16,6 +16,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+const defaultTokenFilePath = ".config/gistup/token"
+
 func main() {
 	os.Exit(run())
 }
@@ -146,5 +148,5 @@ func getConfigFilePath() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(home, ".config/gistup/token"), nil
+	return filepath.Join(home, defaultTokenFilePath), nil
 }
