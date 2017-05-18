@@ -123,7 +123,10 @@ func getToken() (string, error) {
 		return "", err
 	}
 
-	os.MkdirAll(filepath.Dir(configFilePath), os.ModePerm)
+	if err := os.MkdirAll(filepath.Dir(configFilePath), os.ModePerm); err != nil {
+		return "", err
+	}
+
 	configFile, err := os.Create(configFilePath)
 	if err != nil {
 		return "", err
