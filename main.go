@@ -36,30 +36,33 @@ func run() int {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	c := github.NewClient(oauth2.NewClient(ctx, ts))
 
-	fileName := os.Args[1]
-	var fp string
-	if filepath.IsAbs(fileName) {
-		fp = fileName
-	} else {
-		wd, err := os.Getwd()
+	files := map[github.GistFilename]github.GistFile{}
+	for _, fileName := range os.Args[1:] {
+		//		fileName := os.Args[1]
+		var fp string
+		if filepath.IsAbs(fileName) {
+			fp = fileName
+		} else {
+			wd, err := os.Getwd()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			fp = filepath.Join(wd, fileName)
+		}
+		fileName = filepath.Base(fileName)
+
+		content, err := readFile(fp)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		fp = filepath.Join(wd, fileName)
-	}
-	fileName = filepath.Base(fileName)
 
-	content, err := readFile(fp)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+		files[github.GistFilename(fileName)] = github.GistFile{Content: github.String(content)}
 	}
 
 	g, _, err := c.Gists.Create(ctx, &github.Gist{
-		Files: map[github.GistFilename]github.GistFile{
-			github.GistFilename(fileName): github.GistFile{Content: github.String(content)},
-		},
+		Files:  files,
 		Public: github.Bool(false),
 	})
 	if err != nil {
