@@ -47,7 +47,6 @@ func run() int {
 
 	files := map[github.GistFilename]github.GistFile{}
 	for _, fileName := range flag.Args() {
-		//		fileName := os.Args[1]
 		var fp string
 		if filepath.IsAbs(fileName) {
 			fp = fileName
@@ -102,7 +101,6 @@ func loadToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	return readFile(configFilePath)
 }
 
@@ -131,27 +129,38 @@ func getToken() (string, error) {
 		return "", err
 	}
 
-	// Save token.
 	configFilePath, err := getConfigFilePath()
 	if err != nil {
 		return "", err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(configFilePath), os.ModePerm); err != nil {
+	token := a.GetToken()
+	if err := saveToken(token, configFilePath); err != nil {
 		return "", err
+	}
+	return token, nil
+}
+
+func saveToken(token, configFilePath string) error {
+	if err := os.MkdirAll(filepath.Dir(configFilePath), 0700); err != nil {
+		return err
 	}
 
 	configFile, err := os.Create(configFilePath)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer configFile.Close()
 
-	if _, err := configFile.WriteString(a.GetToken()); err != nil {
-		return "", err
+	if err := configFile.Chmod(0600); err != nil {
+		return err
 	}
 
-	return a.GetToken(), nil
+	if _, err := configFile.WriteString(token); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getConfigFilePath() (string, error) {
@@ -159,6 +168,5 @@ func getConfigFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	return filepath.Join(home, defaultTokenFilePath), nil
 }
