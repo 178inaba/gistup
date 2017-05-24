@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,26 +19,34 @@ import (
 
 const defaultTokenFilePath = ".config/gistup/token"
 
+var isAnonymous = flag.Bool("a", false, "Create anonymous gist")
+
 func main() {
+	flag.Parse()
 	os.Exit(run())
 }
 
 func run() int {
-	token, err := loadToken()
-	if err != nil {
-		token, err = getToken()
+	var c *github.Client
+	ctx := context.Background()
+	if !*isAnonymous {
+		token, err := loadToken()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
+			token, err = getToken()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
 		}
+
+		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+		c = github.NewClient(oauth2.NewClient(ctx, ts))
+	} else {
+		c = github.NewClient(nil)
 	}
 
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	c := github.NewClient(oauth2.NewClient(ctx, ts))
-
 	files := map[github.GistFilename]github.GistFile{}
-	for _, fileName := range os.Args[1:] {
+	for _, fileName := range flag.Args() {
 		//		fileName := os.Args[1]
 		var fp string
 		if filepath.IsAbs(fileName) {
