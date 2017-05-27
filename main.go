@@ -27,6 +27,12 @@ func main() {
 }
 
 func run() int {
+	args := flag.Args()
+	if len(args) == 0 {
+		flag.Usage()
+		return 1
+	}
+
 	var c *github.Client
 	ctx := context.Background()
 	if !*isAnonymous {
@@ -46,7 +52,7 @@ func run() int {
 	}
 
 	files := map[github.GistFilename]github.GistFile{}
-	for _, fileName := range flag.Args() {
+	for _, fileName := range args {
 		var fp string
 		if filepath.IsAbs(fileName) {
 			fp = fileName
