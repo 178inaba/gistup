@@ -22,6 +22,7 @@ const defaultTokenFilePath = ".config/gistup/token"
 var (
 	isAnonymous = flag.Bool("a", false, "Create anonymous gist")
 	description = flag.String("d", "", "Description of gist")
+	isPublic    = flag.Bool("p", false, "Create public gist")
 )
 
 func main() {
@@ -81,7 +82,7 @@ func run() int {
 	g, _, err := c.Gists.Create(ctx, &github.Gist{
 		Description: description,
 		Files:       files,
-		Public:      github.Bool(false),
+		Public:      isPublic,
 	})
 	if err != nil {
 		log.Fatal(err)
