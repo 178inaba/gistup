@@ -28,6 +28,8 @@ var (
 )
 
 func main() {
+	log.SetFlags(0)
+	log.SetPrefix("gistup")
 	flag.Parse()
 	os.Exit(run())
 }
@@ -46,7 +48,7 @@ func run() int {
 		if err != nil {
 			token, err = getToken()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
+				log.Print(err)
 				return 1
 			}
 		}
@@ -65,7 +67,7 @@ func run() int {
 		} else {
 			wd, err := os.Getwd()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
+				log.Print(err)
 				return 1
 			}
 			fp = filepath.Join(wd, fileName)
@@ -74,7 +76,7 @@ func run() int {
 
 		content, err := readFile(fp)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			log.Print(err)
 			return 1
 		}
 
@@ -87,7 +89,8 @@ func run() int {
 		Public:      isPublic,
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return 1
 	}
 
 	if err := openURL(*g.HTMLURL); err != nil {
