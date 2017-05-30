@@ -94,8 +94,7 @@ func run() int {
 	}
 
 	if err := openURL(*g.HTMLURL); err != nil {
-		log.Print(err)
-		return 1
+		fmt.Println(*g.HTMLURL)
 	}
 	return 0
 }
@@ -110,18 +109,9 @@ func openURL(rawurl string) error {
 	case "windows":
 		openCmd = "start"
 	}
-
-	openCmd, err := exec.LookPath(openCmd)
-	if err != nil {
-		fmt.Println(rawurl)
-		return nil
-	}
-
-	cmd := exec.Command(openCmd, rawurl)
-	if err := cmd.Run(); err != nil {
+	if err := exec.Command(openCmd, rawurl).Run(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
