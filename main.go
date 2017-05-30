@@ -180,17 +180,7 @@ func saveToken(token, configFilePath string) error {
 		return err
 	}
 
-	configFile, err := os.Create(configFilePath)
-	if err != nil {
-		return err
-	}
-	defer configFile.Close()
-
-	if err := configFile.Chmod(0600); err != nil {
-		return err
-	}
-
-	if _, err := configFile.WriteString(token); err != nil {
+	if err := ioutil.WriteFile(configFilePath, []byte(token), 0600); err != nil {
 		return err
 	}
 
