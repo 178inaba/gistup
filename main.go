@@ -101,15 +101,17 @@ func run() int {
 
 func openURL(rawurl string) error {
 	openCmd := "xdg-open"
+	args := []string{rawurl}
 	switch runtime.GOOS {
 	case "darwin":
 		openCmd = "open"
 	case "plan9":
 		openCmd = "plumb"
 	case "windows":
-		openCmd = "start"
+		openCmd = "rundll32.exe"
+		args = append([]string{"url.dll,FileProtocolHandler"}, args...)
 	}
-	if err := exec.Command(openCmd, rawurl).Run(); err != nil {
+	if err := exec.Command(openCmd, args...).Run(); err != nil {
 		return err
 	}
 	return nil
