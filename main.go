@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"golang.org/x/oauth2"
 
@@ -88,8 +90,28 @@ func run() int {
 		log.Fatal(err)
 	}
 
-	fmt.Println(*g.HTMLURL)
+	if err := openURL(*g.HTMLURL); err != nil {
+		log.Print(err)
+		return 1
+	}
 	return 0
+}
+
+func openURL(rawurl string) error {
+	openCmd := "xdg-open"
+	switch runtime.GOOS {
+	case "darwin":
+		openCmd = "open"
+	case "plan9":
+		openCmd = "plumb"
+	case "windows":
+		openCmd = "start"
+	}
+	cmd := exec.Command(openCmd, rawurl)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func readFile(fp string) (string, error) {
