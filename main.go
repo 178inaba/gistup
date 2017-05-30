@@ -29,7 +29,7 @@ var (
 
 func main() {
 	log.SetFlags(0)
-	log.SetPrefix("gistup: ")
+	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
 	flag.Parse()
 	os.Exit(run())
 }
