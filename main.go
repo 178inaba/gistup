@@ -110,10 +110,18 @@ func openURL(rawurl string) error {
 	case "windows":
 		openCmd = "start"
 	}
+
+	openCmd, err := exec.LookPath(openCmd)
+	if err != nil {
+		fmt.Println(rawurl)
+		return nil
+	}
+
 	cmd := exec.Command(openCmd, rawurl)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
