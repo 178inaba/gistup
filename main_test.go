@@ -8,17 +8,6 @@ import (
 	"testing"
 )
 
-func TestGetConfigFilePath(t *testing.T) {
-	configFilePath, err := getConfigFilePath()
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if !strings.Contains(configFilePath, defaultTokenFilePath) {
-		t.Fatalf("%q should be contained in output of config file path: %v",
-			defaultTokenFilePath, configFilePath)
-	}
-}
-
 func TestSaveToken(t *testing.T) {
 	token := "abcde"
 	fp := "/tmp/gistup/token"
@@ -54,5 +43,16 @@ func TestSaveToken(t *testing.T) {
 	}
 	if string(bs) != token {
 		t.Fatalf("want %q but %q", token, string(bs))
+	}
+}
+
+func TestGetConfigFilePath(t *testing.T) {
+	configFilePath, err := getConfigFilePath()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if !strings.Contains(configFilePath, defaultTokenFilePath) {
+		t.Fatalf("%q should be contained in output of config file path: %v",
+			defaultTokenFilePath, configFilePath)
 	}
 }
