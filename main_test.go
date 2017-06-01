@@ -10,11 +10,57 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+func TestOpenURL(t *testing.T) {
+	envPath := os.Getenv("PATH")
+	err := os.Unsetenv("PATH")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		err := os.Unsetenv("PATH")
+		if err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+		err = os.Setenv("PATH", envPath)
+		if err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	err = openURL("http://example.com/")
+	if err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	err = os.Setenv("PATH", fp)
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if err := os.Mkdir(fp, 0700); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	bins := []string{"xdg-open", "open", "plumb", "rundll32.exe"}
+	for _, bin := range bins {
+		if err := ioutil.WriteFile(filepath.Join(fp, bin), []byte("#!/bin/sh\n"), 0500); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}
+	defer func() {
+		if err := os.RemoveAll(fp); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	err = openURL("http://example.com/")
+	if err != nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+}
+
 func TestReadFile(t *testing.T) {
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
 	tc := "foobar"
 	if err := ioutil.WriteFile(fp, []byte(tc), 0600); err != nil {
-		t.Fatalf("should not be nil: %v", err)
+		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
 		if err := os.Remove(fp); err != nil {
@@ -23,7 +69,7 @@ func TestReadFile(t *testing.T) {
 	}()
 	content, err := readFile(fp)
 	if err != nil {
-		t.Fatalf("should not be nil: %v", err)
+		t.Fatalf("should not be fail: %v", err)
 	}
 	if content != tc {
 		t.Fatalf("want %q but %q", tc, content)
@@ -31,7 +77,7 @@ func TestReadFile(t *testing.T) {
 
 	_, err = readFile("")
 	if err == nil {
-		t.Fatalf("should not be nil: %v", err)
+		t.Fatalf("should be fail: %v", err)
 	}
 }
 
