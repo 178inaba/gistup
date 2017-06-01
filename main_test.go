@@ -71,6 +71,20 @@ func TestSaveToken(t *testing.T) {
 	if err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
+
+	errFP := filepath.Join(os.TempDir(), uuid.NewV4().String(), uuid.NewV4().String())
+	if err := os.MkdirAll(errFP, 0700); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(filepath.Dir(errFP)); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	err = saveToken("", errFP)
+	if err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
 }
 
 func TestGetConfigFilePath(t *testing.T) {
