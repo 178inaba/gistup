@@ -1,14 +1,29 @@
 package main
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/google/go-github/github"
 	uuid "github.com/satori/go.uuid"
 )
+
+type gistCreatorMock struct{}
+
+func (m *gistCreatorMock) Create(ctx context.Context, gist *github.Gist) (*github.Gist, *github.Response, error) {
+	return nil, nil, nil
+}
+
+func TestCreateGist(t *testing.T) {
+	_, err := createGist(context.Background(), nil, &gistCreatorMock{})
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+}
 
 func TestOpenURL(t *testing.T) {
 	envPath := os.Getenv("PATH")

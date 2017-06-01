@@ -27,6 +27,10 @@ var (
 	isPublic    = flag.Bool("p", false, "Create public gist")
 )
 
+type gistCreator interface {
+	Create(ctx context.Context, gist *github.Gist) (*github.Gist, *github.Response, error)
+}
+
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
@@ -44,7 +48,13 @@ func run() int {
 	var c *github.Client
 	ctx := context.Background()
 	if !*isAnonymous {
-		token, err := loadToken()
+		configFilePath, err := getConfigFilePath()
+		if err != nil {
+			log.Print(err)
+			return 1
+		}
+
+		token, err := readFile(configFilePath)
 		if err != nil {
 			token, err = getToken()
 			if err != nil {
@@ -59,35 +69,7 @@ func run() int {
 		c = github.NewClient(nil)
 	}
 
-	files := map[github.GistFilename]github.GistFile{}
-	for _, fileName := range args {
-		var fp string
-		if filepath.IsAbs(fileName) {
-			fp = fileName
-		} else {
-			wd, err := os.Getwd()
-			if err != nil {
-				log.Print(err)
-				return 1
-			}
-			fp = filepath.Join(wd, fileName)
-		}
-		fileName = filepath.Base(fileName)
-
-		content, err := readFile(fp)
-		if err != nil {
-			log.Print(err)
-			return 1
-		}
-
-		files[github.GistFilename(fileName)] = github.GistFile{Content: github.String(content)}
-	}
-
-	g, _, err := c.Gists.Create(ctx, &github.Gist{
-		Description: description,
-		Files:       files,
-		Public:      isPublic,
-	})
+	g, err := createGist(ctx, args, c.Gists)
 	if err != nil {
 		log.Print(err)
 		return 1
@@ -97,6 +79,41 @@ func run() int {
 		fmt.Println(*g.HTMLURL)
 	}
 	return 0
+}
+
+func createGist(ctx context.Context, fileNames []string, gists gistCreator) (*github.Gist, error) {
+	files := map[github.GistFilename]github.GistFile{}
+	for _, fileName := range fileNames {
+		var fp string
+		if filepath.IsAbs(fileName) {
+			fp = fileName
+		} else {
+			wd, err := os.Getwd()
+			if err != nil {
+				return nil, err
+			}
+			fp = filepath.Join(wd, fileName)
+		}
+		fileName = filepath.Base(fileName)
+
+		content, err := readFile(fp)
+		if err != nil {
+			return nil, err
+		}
+
+		files[github.GistFilename(fileName)] = github.GistFile{Content: github.String(content)}
+	}
+
+	g, _, err := gists.Create(ctx, &github.Gist{
+		Description: description,
+		Files:       files,
+		Public:      isPublic,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return g, nil
 }
 
 func openURL(rawurl string) error {
@@ -115,14 +132,6 @@ func openURL(rawurl string) error {
 		return err
 	}
 	return nil
-}
-
-func loadToken() (string, error) {
-	configFilePath, err := getConfigFilePath()
-	if err != nil {
-		return "", err
-	}
-	return readFile(configFilePath)
 }
 
 func getToken() (string, error) {
