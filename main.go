@@ -117,21 +117,6 @@ func openURL(rawurl string) error {
 	return nil
 }
 
-func readFile(fp string) (string, error) {
-	f, err := os.Open(fp)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	bs, err := ioutil.ReadAll(f)
-	if err != nil {
-		return "", err
-	}
-
-	return string(bs), nil
-}
-
 func loadToken() (string, error) {
 	configFilePath, err := getConfigFilePath()
 	if err != nil {
@@ -175,6 +160,21 @@ func getToken() (string, error) {
 		return "", err
 	}
 	return token, nil
+}
+
+func readFile(fp string) (string, error) {
+	f, err := os.Open(fp)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	bs, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bs), nil
 }
 
 func saveToken(token, configFilePath string) error {

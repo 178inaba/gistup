@@ -8,6 +8,26 @@ import (
 	"testing"
 )
 
+func TestReadFile(t *testing.T) {
+	testFilePath := "test.tmp"
+	testContent := "test"
+	if err := ioutil.WriteFile(testFilePath, []byte(testContent), 0600); err != nil {
+		t.Fatalf("should not be nil: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(testFilePath); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	content, err := readFile(testFilePath)
+	if err != nil {
+		t.Fatalf("should not be nil: %v", err)
+	}
+	if content != testContent {
+		t.Fatalf("want %q but %q", testContent, content)
+	}
+}
+
 func TestSaveToken(t *testing.T) {
 	token := "abcde"
 	fp := "/tmp/gistup/token"
