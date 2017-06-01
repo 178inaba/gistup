@@ -28,6 +28,11 @@ func TestReadFile(t *testing.T) {
 	if content != tc {
 		t.Fatalf("want %q but %q", tc, content)
 	}
+
+	_, err = readFile("")
+	if err == nil {
+		t.Fatalf("should not be nil: %v", err)
+	}
 }
 
 func TestSaveToken(t *testing.T) {
