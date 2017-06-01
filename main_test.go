@@ -64,6 +64,11 @@ func TestSaveToken(t *testing.T) {
 	if string(bs) != token {
 		t.Fatalf("want %q but %q", token, string(bs))
 	}
+
+	err = saveToken("", filepath.Join(fp, "foo"))
+	if err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
 }
 
 func TestGetConfigFilePath(t *testing.T) {
