@@ -54,7 +54,13 @@ func run() int {
 		cancel()
 	}()
 
-	c, err := newClient(ctx)
+	tokenFilePath, err := getTokenFilePath()
+	if err != nil {
+		log.Print(err)
+		return 1
+	}
+
+	c, err := newClient(ctx, tokenFilePath)
 	if err != nil {
 		log.Print(err)
 		return 1
@@ -72,7 +78,7 @@ func run() int {
 	return 0
 }
 
-func getToken() (string, error) {
+func getToken(tokenFilePath string) (string, error) {
 	// Login username from stdin.
 	var username string
 	fmt.Print("Username: ")
@@ -80,11 +86,11 @@ func getToken() (string, error) {
 
 	// Password from stdin.
 	fmt.Print("Password: ")
-	pBytes, err := gopass.GetPasswd()
+	pb, err := gopass.GetPasswd()
 	if err != nil {
 		return "", err
 	}
-	password := string(pBytes)
+	password := string(pb)
 
 	t := &github.BasicAuthTransport{Username: username, Password: password}
 	c := github.NewClient(t.Client())
@@ -97,31 +103,21 @@ func getToken() (string, error) {
 		return "", err
 	}
 
-	configFilePath, err := getConfigFilePath()
-	if err != nil {
-		return "", err
-	}
-
 	token := a.GetToken()
-	if err := saveToken(token, configFilePath); err != nil {
+	if err := saveToken(token, tokenFilePath); err != nil {
 		return "", err
 	}
 	return token, nil
 }
 
-func newClient(ctx context.Context) (*github.Client, error) {
+func newClient(ctx context.Context, tokenFilePath string) (*github.Client, error) {
 	if *isAnonymous {
 		return github.NewClient(nil), nil
 	}
 
-	configFilePath, err := getConfigFilePath()
+	token, err := readFile(tokenFilePath)
 	if err != nil {
-		return nil, err
-	}
-
-	token, err := readFile(configFilePath)
-	if err != nil {
-		token, err = getToken()
+		token, err = getToken(tokenFilePath)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +189,7 @@ func saveToken(token, configFilePath string) error {
 	return nil
 }
 
-func getConfigFilePath() (string, error) {
+func getTokenFilePath() (string, error) {
 	home, err := homedir.Dir()
 	if err != nil {
 		return "", err

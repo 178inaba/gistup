@@ -24,6 +24,14 @@ func (m *gistCreatorMock) Create(ctx context.Context, gist *github.Gist) (*githu
 	return gist, nil, nil
 }
 
+// func TestNewClient(t *testing.T) {
+// 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+// 	_, err := newClient(context.Background(), fp)
+// 	if err != nil {
+// 		t.Fatalf("should not be fail: %v", err)
+// 	}
+// }
+
 func TestCreateGist(t *testing.T) {
 	_, err := createGist(context.Background(), nil, &gistCreatorMock{isErr: true})
 	if err == nil {
@@ -132,8 +140,8 @@ func TestSaveToken(t *testing.T) {
 	}
 }
 
-func TestGetConfigFilePath(t *testing.T) {
-	fp, err := getConfigFilePath()
+func TestGetTokenFilePath(t *testing.T) {
+	fp, err := getTokenFilePath()
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
