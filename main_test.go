@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,62 +13,40 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type gistCreatorMock struct{}
+type gistCreatorMock struct {
+	isErr bool
+}
 
 func (m *gistCreatorMock) Create(ctx context.Context, gist *github.Gist) (*github.Gist, *github.Response, error) {
-	return nil, nil, nil
+	if m.isErr {
+		return nil, nil, errors.New("mock error")
+	}
+	return gist, nil, nil
 }
 
 func TestCreateGist(t *testing.T) {
-	_, err := createGist(context.Background(), nil, &gistCreatorMock{})
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-}
-
-func TestOpenURL(t *testing.T) {
-	envPath := os.Getenv("PATH")
-	err := os.Unsetenv("PATH")
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		err := os.Unsetenv("PATH")
-		if err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-		err = os.Setenv("PATH", envPath)
-		if err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	err = openURL("http://example.com/")
+	_, err := createGist(context.Background(), nil, &gistCreatorMock{isErr: true})
 	if err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	err = os.Setenv("PATH", fp)
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if err := os.Mkdir(fp, 0700); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	bins := []string{"xdg-open", "open", "plumb", "rundll32.exe"}
-	for _, bin := range bins {
-		if err := ioutil.WriteFile(filepath.Join(fp, bin), []byte("#!/bin/sh\n"), 0500); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}
-	defer func() {
-		if err := os.RemoveAll(fp); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	err = openURL("http://example.com/")
-	if err != nil {
+	_, err = createGist(context.Background(), []string{""}, &gistCreatorMock{})
+	if err == nil {
 		t.Fatalf("should be fail: %v", err)
+	}
+
+	fileName := uuid.NewV4().String()
+	fp := filepath.Join(os.TempDir(), fileName)
+	tc := "foobar"
+	if err := ioutil.WriteFile(fp, []byte(tc), 0500); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	g, err := createGist(context.Background(), []string{fp}, &gistCreatorMock{})
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if *g.Files[github.GistFilename(fileName)].Content != tc {
+		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(fileName)].Content)
 	}
 }
 
@@ -161,5 +140,51 @@ func TestGetConfigFilePath(t *testing.T) {
 	if !strings.Contains(fp, defaultTokenFilePath) {
 		t.Fatalf("%q should be contained in output of config file path: %v",
 			defaultTokenFilePath, fp)
+	}
+}
+
+func TestOpenURL(t *testing.T) {
+	envPath := os.Getenv("PATH")
+	err := os.Unsetenv("PATH")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		err := os.Unsetenv("PATH")
+		if err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+		err = os.Setenv("PATH", envPath)
+		if err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	err = openURL("http://example.com/")
+	if err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	err = os.Setenv("PATH", fp)
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if err := os.Mkdir(fp, 0700); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	bins := []string{"xdg-open", "open", "plumb", "rundll32.exe"}
+	for _, bin := range bins {
+		if err := ioutil.WriteFile(filepath.Join(fp, bin), []byte("#!/bin/sh\n"), 0500); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}
+	defer func() {
+		if err := os.RemoveAll(fp); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	err = openURL("http://example.com/")
+	if err != nil {
+		t.Fatalf("should be fail: %v", err)
 	}
 }

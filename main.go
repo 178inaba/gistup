@@ -81,59 +81,6 @@ func run() int {
 	return 0
 }
 
-func createGist(ctx context.Context, fileNames []string, gists gistCreator) (*github.Gist, error) {
-	files := map[github.GistFilename]github.GistFile{}
-	for _, fileName := range fileNames {
-		var fp string
-		if filepath.IsAbs(fileName) {
-			fp = fileName
-		} else {
-			wd, err := os.Getwd()
-			if err != nil {
-				return nil, err
-			}
-			fp = filepath.Join(wd, fileName)
-		}
-		fileName = filepath.Base(fileName)
-
-		content, err := readFile(fp)
-		if err != nil {
-			return nil, err
-		}
-
-		files[github.GistFilename(fileName)] = github.GistFile{Content: github.String(content)}
-	}
-
-	g, _, err := gists.Create(ctx, &github.Gist{
-		Description: description,
-		Files:       files,
-		Public:      isPublic,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return g, nil
-}
-
-func openURL(rawurl string) error {
-	openCmd := "xdg-open"
-	args := []string{rawurl}
-	switch runtime.GOOS {
-	case "darwin":
-		openCmd = "open"
-	case "plan9":
-		openCmd = "plumb"
-	case "windows":
-		openCmd = "rundll32.exe"
-		args = append([]string{"url.dll,FileProtocolHandler"}, args...)
-	}
-	if err := exec.Command(openCmd, args...).Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
 func getToken() (string, error) {
 	// Login username from stdin.
 	var username string
@@ -171,6 +118,41 @@ func getToken() (string, error) {
 	return token, nil
 }
 
+func createGist(ctx context.Context, fileNames []string, gists gistCreator) (*github.Gist, error) {
+	files := map[github.GistFilename]github.GistFile{}
+	for _, fileName := range fileNames {
+		var fp string
+		if filepath.IsAbs(fileName) {
+			fp = fileName
+		} else {
+			wd, err := os.Getwd()
+			if err != nil {
+				return nil, err
+			}
+			fp = filepath.Join(wd, fileName)
+		}
+
+		content, err := readFile(fp)
+		if err != nil {
+			return nil, err
+		}
+
+		files[github.GistFilename(filepath.Base(fileName))] =
+			github.GistFile{Content: github.String(content)}
+	}
+
+	g, _, err := gists.Create(ctx, &github.Gist{
+		Description: description,
+		Files:       files,
+		Public:      isPublic,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return g, nil
+}
+
 func readFile(fp string) (string, error) {
 	f, err := os.Open(fp)
 	if err != nil {
@@ -204,4 +186,22 @@ func getConfigFilePath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, defaultTokenFilePath), nil
+}
+
+func openURL(rawurl string) error {
+	openCmd := "xdg-open"
+	args := []string{rawurl}
+	switch runtime.GOOS {
+	case "darwin":
+		openCmd = "open"
+	case "plan9":
+		openCmd = "plumb"
+	case "windows":
+		openCmd = "rundll32.exe"
+		args = append([]string{"url.dll,FileProtocolHandler"}, args...)
+	}
+	if err := exec.Command(openCmd, args...).Run(); err != nil {
+		return err
+	}
+	return nil
 }
