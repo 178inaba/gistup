@@ -45,28 +45,13 @@ func run() int {
 		return 1
 	}
 
-	var c *github.Client
-	ctx := context.Background()
-	if !*isAnonymous {
-		configFilePath, err := getConfigFilePath()
-		if err != nil {
-			log.Print(err)
-			return 1
-		}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-		token, err := readFile(configFilePath)
-		if err != nil {
-			token, err = getToken()
-			if err != nil {
-				log.Print(err)
-				return 1
-			}
-		}
-
-		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-		c = github.NewClient(oauth2.NewClient(ctx, ts))
-	} else {
-		c = github.NewClient(nil)
+	c, err := newClient(ctx)
+	if err != nil {
+		log.Print(err)
+		return 1
 	}
 
 	g, err := createGist(ctx, args, c.Gists)
@@ -116,6 +101,28 @@ func getToken() (string, error) {
 		return "", err
 	}
 	return token, nil
+}
+
+func newClient(ctx context.Context) (*github.Client, error) {
+	if *isAnonymous {
+		return github.NewClient(nil), nil
+	}
+
+	configFilePath, err := getConfigFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := readFile(configFilePath)
+	if err != nil {
+		token, err = getToken()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	return github.NewClient(oauth2.NewClient(ctx, ts)), nil
 }
 
 func createGist(ctx context.Context, fileNames []string, gists gistCreator) (*github.Gist, error) {
