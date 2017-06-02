@@ -46,9 +46,9 @@ func run() int {
 		return 1
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		<-sigCh
 		cancel()
