@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 
@@ -46,7 +47,12 @@ func run() int {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	go func() {
+		<-sigCh
+		cancel()
+	}()
 
 	c, err := newClient(ctx)
 	if err != nil {
