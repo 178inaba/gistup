@@ -16,6 +16,68 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+func TestGetToken(t *testing.T) {
+	canErr := true
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if canErr {
+			canErr = false
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintln(w, `{"token":"foobar"}`)
+	}))
+	defer ts.Close()
+
+	apiURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	tmpStdin := os.Stdin
+	os.Stdin = pr
+	if _, err := pw.WriteString("\n\n\n\n\n\n"); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		os.Stdin = tmpStdin
+		if err := pr.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+		if err := pw.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+
+	if _, err := getToken(apiURL, ""); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	if err := ioutil.WriteFile(fp, []byte(""), 0600); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(fp); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	if _, err := getToken(apiURL, filepath.Join(fp, "foo")); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	token, err := getToken(apiURL, fp)
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if token != "foobar" {
+		t.Fatalf("want %q but %q", "foobar", token)
+	}
+}
+
 func TestNewClient(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, ``)
@@ -90,9 +152,14 @@ func TestCreateGist(t *testing.T) {
 	}
 
 	fp := filepath.Join(os.TempDir(), fileName)
-	if err := ioutil.WriteFile(fp, []byte(tc), 0500); err != nil {
+	if err := ioutil.WriteFile(fp, []byte(tc), 0400); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
+	defer func() {
+		if err := os.Remove(fp); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
 	g, err := createGist(context.Background(), []string{fp}, c.Gists)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
@@ -105,7 +172,7 @@ func TestCreateGist(t *testing.T) {
 func TestReadFile(t *testing.T) {
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
 	tc := "foobar"
-	if err := ioutil.WriteFile(fp, []byte(tc), 0600); err != nil {
+	if err := ioutil.WriteFile(fp, []byte(tc), 0400); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
