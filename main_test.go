@@ -33,40 +33,50 @@ func TestNewClient(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	_, err := newClient(context.Background(), ":", "")
-	if err == nil {
+	if _, err := newClient(context.Background(), ":", ""); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
 	*isAnonymous = true
-	_, err = newClient(context.Background(), ts.URL, "")
-	if err != nil {
+	if _, err := newClient(context.Background(), ts.URL, ""); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
 	*isAnonymous = false
-	getPassword = func() ([]byte, error) { return nil, errors.New("test error") }
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	_, err = newClient(context.Background(), ts.URL, fp)
-	if err == nil {
+	if _, err := newClient(context.Background(), ts.URL, fp); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	getPassword = func() ([]byte, error) { return []byte{}, nil }
-	_, err = newClient(context.Background(), ts.URL, fp)
+	pr, pw, err := os.Pipe()
 	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	tmpStdin := os.Stdin
+	os.Stdin = pr
+	if _, err := pw.WriteString("\n\n"); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		os.Stdin = tmpStdin
+		if err := pr.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+		if err := pw.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	if _, err := newClient(context.Background(), ts.URL, fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 }
 
 func TestCreateGist(t *testing.T) {
-	_, err := createGist(context.Background(), nil, &gistCreatorMock{isErr: true})
-	if err == nil {
+	if _, err := createGist(context.Background(), nil, &gistCreatorMock{isErr: true}); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	_, err = createGist(context.Background(), []string{""}, &gistCreatorMock{})
-	if err == nil {
+	if _, err := createGist(context.Background(), []string{""}, &gistCreatorMock{}); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
@@ -104,8 +114,7 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("want %q but %q", tc, content)
 	}
 
-	_, err = readFile("")
-	if err == nil {
+	if _, err := readFile(""); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 }
@@ -113,8 +122,7 @@ func TestReadFile(t *testing.T) {
 func TestSaveToken(t *testing.T) {
 	token := "foobar"
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	err := saveToken(token, fp)
-	if err != nil {
+	if err := saveToken(token, fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
@@ -147,8 +155,7 @@ func TestSaveToken(t *testing.T) {
 		t.Fatalf("want %q but %q", token, string(bs))
 	}
 
-	err = saveToken("", filepath.Join(fp, "foo"))
-	if err == nil {
+	if err := saveToken("", filepath.Join(fp, "foo")); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
@@ -161,8 +168,7 @@ func TestSaveToken(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	err = saveToken("", errFP)
-	if err == nil {
+	if err := saveToken("", errFP); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 }
@@ -180,28 +186,23 @@ func TestGetTokenFilePath(t *testing.T) {
 
 func TestOpenURL(t *testing.T) {
 	envPath := os.Getenv("PATH")
-	err := os.Unsetenv("PATH")
-	if err != nil {
+	if err := os.Unsetenv("PATH"); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
-		err := os.Unsetenv("PATH")
-		if err != nil {
+		if err := os.Unsetenv("PATH"); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
-		err = os.Setenv("PATH", envPath)
-		if err != nil {
+		if err := os.Setenv("PATH", envPath); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	err = openURL("http://example.com/")
-	if err == nil {
+	if err := openURL("http://example.com/"); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	err = os.Setenv("PATH", fp)
-	if err != nil {
+	if err := os.Setenv("PATH", fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	if err := os.Mkdir(fp, 0700); err != nil {
@@ -218,8 +219,7 @@ func TestOpenURL(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	err = openURL("http://example.com/")
-	if err != nil {
+	if err := openURL("http://example.com/"); err != nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 }

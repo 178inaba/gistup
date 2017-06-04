@@ -27,9 +27,6 @@ var (
 	isAnonymous = flag.Bool("a", false, "Create anonymous gist")
 	description = flag.String("d", "", "Description of gist")
 	isPublic    = flag.Bool("p", false, "Create public gist")
-	getPassword = func() ([]byte, error) {
-		return gopass.GetPasswd()
-	}
 )
 
 type gistCreator interface {
@@ -90,7 +87,7 @@ func prompt() (string, string, error) {
 
 	// Password from stdin.
 	fmt.Print("Password: ")
-	pBytes, err := getPassword()
+	pBytes, err := gopass.GetPasswd()
 	if err != nil {
 		return "", "", err
 	}
