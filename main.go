@@ -75,47 +75,12 @@ func run() int {
 	return 0
 }
 
-func prompt() (string, string, error) {
-	// Login username from stdin.
-	fmt.Print("Username: ")
-	var username string
-	fmt.Scanln(&username)
-
-	// Password from stdin.
-	fmt.Print("Password: ")
-	pBytes, err := gopass.GetPasswd()
-	if err != nil {
-		return "", "", err
-	}
-
-	return username, string(pBytes), nil
-}
-
-func getToken(apiURL *url.URL, tokenFilePath string) (string, error) {
-	username, password, err := prompt()
+func getTokenFilePath() (string, error) {
+	home, err := homedir.Dir()
 	if err != nil {
 		return "", err
 	}
-
-	t := &github.BasicAuthTransport{Username: username, Password: password}
-	c := github.NewClient(t.Client())
-	if apiURL != nil {
-		c.BaseURL = apiURL
-	}
-	a, _, err := c.Authorizations.Create(context.Background(), &github.AuthorizationRequest{
-		Scopes:      []github.Scope{"gist"},
-		Note:        github.String("gistup"),
-		Fingerprint: github.String(uuid.NewV4().String()),
-	})
-	if err != nil {
-		return "", err
-	}
-
-	token := a.GetToken()
-	if err := saveToken(token, tokenFilePath); err != nil {
-		return "", err
-	}
-	return token, nil
+	return filepath.Join(home, defaultTokenFilePath), nil
 }
 
 func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Client, error) {
@@ -150,6 +115,61 @@ func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Cl
 		c.BaseURL = apiURL
 	}
 	return c, nil
+}
+
+func getToken(apiURL *url.URL, tokenFilePath string) (string, error) {
+	username, password, err := prompt()
+	if err != nil {
+		return "", err
+	}
+
+	t := &github.BasicAuthTransport{Username: username, Password: password}
+	c := github.NewClient(t.Client())
+	if apiURL != nil {
+		c.BaseURL = apiURL
+	}
+	a, _, err := c.Authorizations.Create(context.Background(), &github.AuthorizationRequest{
+		Scopes:      []github.Scope{"gist"},
+		Note:        github.String("gistup"),
+		Fingerprint: github.String(uuid.NewV4().String()),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	token := a.GetToken()
+	if err := saveToken(token, tokenFilePath); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func prompt() (string, string, error) {
+	// Login username from stdin.
+	fmt.Print("Username: ")
+	var username string
+	fmt.Scanln(&username)
+
+	// Password from stdin.
+	fmt.Print("Password: ")
+	pBytes, err := gopass.GetPasswd()
+	if err != nil {
+		return "", "", err
+	}
+
+	return username, string(pBytes), nil
+}
+
+func saveToken(token, configFilePath string) error {
+	if err := os.MkdirAll(filepath.Dir(configFilePath), 0700); err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(configFilePath, []byte(token), 0600); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func createGist(ctx context.Context, fileNames []string, gists *github.GistsService) (*github.Gist, error) {
@@ -200,26 +220,6 @@ func readFile(fp string) (string, error) {
 	}
 
 	return string(bs), nil
-}
-
-func saveToken(token, configFilePath string) error {
-	if err := os.MkdirAll(filepath.Dir(configFilePath), 0700); err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(configFilePath, []byte(token), 0600); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func getTokenFilePath() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, defaultTokenFilePath), nil
 }
 
 func openURL(rawurl string) error {

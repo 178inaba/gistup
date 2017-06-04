@@ -16,6 +16,61 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+func TestGetTokenFilePath(t *testing.T) {
+	fp, err := getTokenFilePath()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if !strings.Contains(fp, defaultTokenFilePath) {
+		t.Fatalf("%q should be contained in output of config file path: %v",
+			defaultTokenFilePath, fp)
+	}
+}
+
+func TestNewClient(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, ``)
+	}))
+	defer ts.Close()
+
+	if _, err := newClient(context.Background(), ":", ""); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	*isAnonymous = true
+	if _, err := newClient(context.Background(), ts.URL, ""); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+
+	*isAnonymous = false
+	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	if _, err := newClient(context.Background(), ts.URL, fp); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	tmpStdin := os.Stdin
+	os.Stdin = pr
+	if _, err := pw.WriteString("\n\n"); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		os.Stdin = tmpStdin
+		if err := pr.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+		if err := pw.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	if _, err := newClient(context.Background(), ts.URL, fp); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+}
+
 func TestGetToken(t *testing.T) {
 	canErr := true
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,47 +133,92 @@ func TestGetToken(t *testing.T) {
 	}
 }
 
-func TestNewClient(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, ``)
-	}))
-	defer ts.Close()
-
-	if _, err := newClient(context.Background(), ":", ""); err == nil {
-		t.Fatalf("should be fail: %v", err)
-	}
-
-	*isAnonymous = true
-	if _, err := newClient(context.Background(), ts.URL, ""); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-
-	*isAnonymous = false
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	if _, err := newClient(context.Background(), ts.URL, fp); err == nil {
-		t.Fatalf("should be fail: %v", err)
-	}
-
+func TestPrompt(t *testing.T) {
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	tmpStdin := os.Stdin
 	os.Stdin = pr
-	if _, err := pw.WriteString("\n\n"); err != nil {
+	if _, err := pw.WriteString("foo\nbar\n"); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+
+	u, p, err := prompt()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if u != "foo" {
+		t.Fatalf("want %q but %q", "foo", u)
+	}
+	if p != "bar" {
+		t.Fatalf("want %q but %q", "bar", u)
+	}
+
+	os.Stdin = tmpStdin
+	if err := pr.Close(); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if err := pw.Close(); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+
+	if _, _, err = prompt(); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+}
+
+func TestSaveToken(t *testing.T) {
+	token := "foobar"
+	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	if err := saveToken(token, fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
-		os.Stdin = tmpStdin
-		if err := pr.Close(); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-		if err := pw.Close(); err != nil {
+		if err := os.Remove(fp); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	if _, err := newClient(context.Background(), ts.URL, fp); err != nil {
+	f, err := os.Open(fp)
+	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	fi, err := f.Stat()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	mode := fi.Mode()
+	if mode != 0600 {
+		t.Fatalf("want %#o but %#o", 0600, mode)
+	}
+	bs, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if string(bs) != token {
+		t.Fatalf("want %q but %q", token, string(bs))
+	}
+
+	if err := saveToken("", filepath.Join(fp, "foo")); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	errFP := filepath.Join(os.TempDir(), uuid.NewV4().String(), uuid.NewV4().String())
+	if err := os.MkdirAll(errFP, 0700); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(filepath.Dir(errFP)); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	if err := saveToken("", errFP); err == nil {
+		t.Fatalf("should be fail: %v", err)
 	}
 }
 
@@ -190,71 +290,6 @@ func TestReadFile(t *testing.T) {
 
 	if _, err := readFile(""); err == nil {
 		t.Fatalf("should be fail: %v", err)
-	}
-}
-
-func TestSaveToken(t *testing.T) {
-	token := "foobar"
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	if err := saveToken(token, fp); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		if err := os.Remove(fp); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	f, err := os.Open(fp)
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	fi, err := f.Stat()
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	mode := fi.Mode()
-	if mode != 0600 {
-		t.Fatalf("want %#o but %#o", 0600, mode)
-	}
-	bs, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if string(bs) != token {
-		t.Fatalf("want %q but %q", token, string(bs))
-	}
-
-	if err := saveToken("", filepath.Join(fp, "foo")); err == nil {
-		t.Fatalf("should be fail: %v", err)
-	}
-
-	errFP := filepath.Join(os.TempDir(), uuid.NewV4().String(), uuid.NewV4().String())
-	if err := os.MkdirAll(errFP, 0700); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(filepath.Dir(errFP)); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	if err := saveToken("", errFP); err == nil {
-		t.Fatalf("should be fail: %v", err)
-	}
-}
-
-func TestGetTokenFilePath(t *testing.T) {
-	fp, err := getTokenFilePath()
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if !strings.Contains(fp, defaultTokenFilePath) {
-		t.Fatalf("%q should be contained in output of config file path: %v",
-			defaultTokenFilePath, fp)
 	}
 }
 
