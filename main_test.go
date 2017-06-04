@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,13 +27,37 @@ func (m *gistCreatorMock) Create(ctx context.Context, gist *github.Gist) (*githu
 	return gist, nil, nil
 }
 
-// func TestNewClient(t *testing.T) {
-// 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-// 	_, err := newClient(context.Background(), fp)
-// 	if err != nil {
-// 		t.Fatalf("should not be fail: %v", err)
-// 	}
-// }
+func TestNewClient(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, ``)
+	}))
+	defer ts.Close()
+
+	_, err := newClient(context.Background(), ":", "")
+	if err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	*isAnonymous = true
+	_, err = newClient(context.Background(), ts.URL, "")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+
+	*isAnonymous = false
+	getPassword = func() ([]byte, error) { return nil, errors.New("test error") }
+	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	_, err = newClient(context.Background(), ts.URL, fp)
+	if err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	getPassword = func() ([]byte, error) { return []byte{}, nil }
+	_, err = newClient(context.Background(), ts.URL, fp)
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+}
 
 func TestCreateGist(t *testing.T) {
 	_, err := createGist(context.Background(), nil, &gistCreatorMock{isErr: true})

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -26,6 +27,9 @@ var (
 	isAnonymous = flag.Bool("a", false, "Create anonymous gist")
 	description = flag.String("d", "", "Description of gist")
 	isPublic    = flag.Bool("p", false, "Create public gist")
+	getPassword = func() ([]byte, error) {
+		return gopass.GetPasswd()
+	}
 )
 
 type gistCreator interface {
@@ -60,7 +64,7 @@ func run() int {
 		return 1
 	}
 
-	c, err := newClient(ctx, tokenFilePath)
+	c, err := newClient(ctx, "", tokenFilePath)
 	if err != nil {
 		log.Print(err)
 		return 1
@@ -78,22 +82,33 @@ func run() int {
 	return 0
 }
 
-func getToken(tokenFilePath string) (string, error) {
+func prompt() (string, string, error) {
 	// Login username from stdin.
-	var username string
 	fmt.Print("Username: ")
+	var username string
 	fmt.Scanln(&username)
 
 	// Password from stdin.
 	fmt.Print("Password: ")
-	pb, err := gopass.GetPasswd()
+	pBytes, err := getPassword()
+	if err != nil {
+		return "", "", err
+	}
+
+	return username, string(pBytes), nil
+}
+
+func getToken(apiURL *url.URL, tokenFilePath string) (string, error) {
+	username, password, err := prompt()
 	if err != nil {
 		return "", err
 	}
-	password := string(pb)
 
 	t := &github.BasicAuthTransport{Username: username, Password: password}
 	c := github.NewClient(t.Client())
+	if apiURL != nil {
+		c.BaseURL = apiURL
+	}
 	a, _, err := c.Authorizations.Create(context.Background(), &github.AuthorizationRequest{
 		Scopes:      []github.Scope{"gist"},
 		Note:        github.String("gistup"),
@@ -110,21 +125,38 @@ func getToken(tokenFilePath string) (string, error) {
 	return token, nil
 }
 
-func newClient(ctx context.Context, tokenFilePath string) (*github.Client, error) {
+func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Client, error) {
+	var apiURL *url.URL
+	if apiRawurl != "" {
+		var err error
+		apiURL, err = url.Parse(apiRawurl)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if *isAnonymous {
-		return github.NewClient(nil), nil
+		c := github.NewClient(nil)
+		if apiURL != nil {
+			c.BaseURL = apiURL
+		}
+		return c, nil
 	}
 
 	token, err := readFile(tokenFilePath)
 	if err != nil {
-		token, err = getToken(tokenFilePath)
+		token, err = getToken(apiURL, tokenFilePath)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	return github.NewClient(oauth2.NewClient(ctx, ts)), nil
+	c := github.NewClient(oauth2.NewClient(ctx, ts))
+	if apiURL != nil {
+		c.BaseURL = apiURL
+	}
+	return c, nil
 }
 
 func createGist(ctx context.Context, fileNames []string, gists gistCreator) (*github.Gist, error) {
