@@ -29,10 +29,6 @@ var (
 	isPublic    = flag.Bool("p", false, "Create public gist")
 )
 
-type gistCreator interface {
-	Create(ctx context.Context, gist *github.Gist) (*github.Gist, *github.Response, error)
-}
-
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
@@ -156,7 +152,7 @@ func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Cl
 	return c, nil
 }
 
-func createGist(ctx context.Context, fileNames []string, gists gistCreator) (*github.Gist, error) {
+func createGist(ctx context.Context, fileNames []string, gists *github.GistsService) (*github.Gist, error) {
 	files := map[github.GistFilename]github.GistFile{}
 	for _, fileName := range fileNames {
 		var fp string

@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,17 +15,6 @@ import (
 	"github.com/google/go-github/github"
 	uuid "github.com/satori/go.uuid"
 )
-
-type gistCreatorMock struct {
-	isErr bool
-}
-
-func (m *gistCreatorMock) Create(ctx context.Context, gist *github.Gist) (*github.Gist, *github.Response, error) {
-	if m.isErr {
-		return nil, nil, errors.New("mock error")
-	}
-	return gist, nil, nil
-}
 
 func TestNewClient(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,21 +61,39 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestCreateGist(t *testing.T) {
-	if _, err := createGist(context.Background(), nil, &gistCreatorMock{isErr: true}); err == nil {
-		t.Fatalf("should be fail: %v", err)
-	}
-
-	if _, err := createGist(context.Background(), []string{""}, &gistCreatorMock{}); err == nil {
-		t.Fatalf("should be fail: %v", err)
-	}
-
 	fileName := uuid.NewV4().String()
-	fp := filepath.Join(os.TempDir(), fileName)
 	tc := "foobar"
+	canErr := true
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if canErr {
+			canErr = false
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintln(w, fmt.Sprintf(`{"files":{"%s":{"content":"%s"}}}`, fileName, tc))
+	}))
+	defer ts.Close()
+
+	apiURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	c := github.NewClient(nil)
+	c.BaseURL = apiURL
+
+	if _, err := createGist(context.Background(), nil, c.Gists); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	if _, err := createGist(context.Background(), []string{""}, c.Gists); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
+	fp := filepath.Join(os.TempDir(), fileName)
 	if err := ioutil.WriteFile(fp, []byte(tc), 0500); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
-	g, err := createGist(context.Background(), []string{fp}, &gistCreatorMock{})
+	g, err := createGist(context.Background(), []string{fp}, c.Gists)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
