@@ -10,8 +10,21 @@ Gist uploader for cli
 
 ```console
 $ gistup target.go
-https://gist.github.com/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+The github gist opens automatically in the browser.
+If the browser can not be opened, the URL will be displayed.
+
+### Options
+
+-a
+	Create anonymous gist
+
+-d <description>
+	Description of gist
+
+-p
+	Create public gist
 
 ## Install
 
