@@ -19,10 +19,8 @@ If the browser can not be opened, the URL will be displayed.
 
 * -a
   * Create anonymous gist.
-
 * -d \<description\>
   * Description of gist.
-
 * -p
   * Create public gist.
 
