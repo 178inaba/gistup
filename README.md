@@ -17,14 +17,14 @@ If the browser can not be opened, the URL will be displayed.
 
 ### Options
 
--a  
-* Create anonymous gist
+* -a
+  * Create anonymous gist.
 
--d \<description\>  
-* Description of gist
+* -d \<description\>
+  * Description of gist.
 
--p  
-* Create public gist
+* -p
+  * Create public gist.
 
 ## Install
 
