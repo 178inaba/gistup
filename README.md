@@ -12,7 +12,7 @@ Gist uploader for cli
 $ gistup target.go
 ```
 
-The github gist opens automatically in the browser.
+The github gist opens automatically in the browser.  
 If the browser can not be opened, the URL will be displayed.
 
 ### Options
@@ -20,7 +20,7 @@ If the browser can not be opened, the URL will be displayed.
 -a
 	Create anonymous gist
 
--d <description>
+-d \<description\>
 	Description of gist
 
 -p
