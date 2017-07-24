@@ -18,13 +18,13 @@ If the browser can not be opened, the URL will be displayed.
 ### Options
 
 -a  
-	Create anonymous gist
+* Create anonymous gist
 
 -d \<description\>  
-	Description of gist
+* Description of gist
 
 -p  
-	Create public gist
+* Create public gist
 
 ## Install
 
