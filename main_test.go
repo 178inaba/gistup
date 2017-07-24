@@ -107,7 +107,7 @@ func TestGetToken(t *testing.T) {
 		}
 	}()
 
-	if _, err := getToken(apiURL, ""); err == nil {
+	if _, err := getToken(context.Background(), apiURL, ""); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
@@ -120,11 +120,11 @@ func TestGetToken(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	if _, err := getToken(apiURL, filepath.Join(fp, "foo")); err == nil {
+	if _, err := getToken(context.Background(), apiURL, filepath.Join(fp, "foo")); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	token, err := getToken(apiURL, fp)
+	token, err := getToken(context.Background(), apiURL, fp)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestPrompt(t *testing.T) {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
-	u, p, err := prompt()
+	u, p, err := prompt(context.Background())
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestPrompt(t *testing.T) {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
-	if _, _, err = prompt(); err == nil {
+	if _, _, err = prompt(context.Background()); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 }

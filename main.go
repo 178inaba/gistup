@@ -103,7 +103,7 @@ func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Cl
 
 	token, err := readFile(tokenFilePath)
 	if err != nil {
-		token, err = getToken(apiURL, tokenFilePath)
+		token, err = getToken(ctx, apiURL, tokenFilePath)
 		if err != nil {
 			return nil, err
 		}
@@ -117,8 +117,8 @@ func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Cl
 	return c, nil
 }
 
-func getToken(apiURL *url.URL, tokenFilePath string) (string, error) {
-	username, password, err := prompt()
+func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (string, error) {
+	username, password, err := prompt(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -144,11 +144,21 @@ func getToken(apiURL *url.URL, tokenFilePath string) (string, error) {
 	return token, nil
 }
 
-func prompt() (string, string, error) {
+func prompt(ctx context.Context) (string, string, error) {
 	// Login username from stdin.
 	fmt.Print("Username: ")
+	ch := make(chan string)
+	go func() {
+		var s string
+		fmt.Scanln(&s)
+		ch <- s
+	}()
 	var username string
-	fmt.Scanln(&username)
+	select {
+	case <-ctx.Done():
+		return "", "", ctx.Err()
+	case username = <-ch:
+	}
 
 	// Password from stdin.
 	fmt.Print("Password: ")
