@@ -166,6 +166,12 @@ func TestPrompt(t *testing.T) {
 	if _, _, err = prompt(context.Background()); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, _, err = prompt(ctx); err != context.Canceled {
+		t.Fatalf("should be context canceled: %v", err)
+	}
 }
 
 func TestSaveToken(t *testing.T) {
