@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -57,6 +58,7 @@ func run() int {
 		return 1
 	}
 
+reAuth:
 	c, err := newClient(ctx, "", tokenFilePath)
 	if err != nil {
 		log.Print(err)
@@ -65,6 +67,20 @@ func run() int {
 
 	g, err := createGist(ctx, args, c.Gists)
 	if err != nil {
+		// If bad token, Authentication again.
+		if errResp, ok := err.(*github.ErrorResponse); ok &&
+			errResp.Response.StatusCode == http.StatusUnauthorized {
+			// Remove bad token file.
+			if err := os.Remove(tokenFilePath); err != nil {
+				log.Print(err)
+				return 1
+			}
+
+			// Authentication again.
+			fmt.Println("Bad token. Authentication again.")
+			goto reAuth
+		}
+
 		log.Print(err)
 		return 1
 	}
