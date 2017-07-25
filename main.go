@@ -40,7 +40,8 @@ func main() {
 func run() int {
 	args := flag.Args()
 	if len(args) == 0 {
-		flag.Usage()
+		fmt.Fprintf(os.Stderr, "usage: %s [-a] [-d <description>] [-p] <file>...\n", os.Args[0])
+		flag.PrintDefaults()
 		return 1
 	}
 
