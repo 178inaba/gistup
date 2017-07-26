@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/google/go-github/github"
+	tty "github.com/mattn/go-tty"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -33,6 +35,8 @@ func TestNewClient(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
+	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	if _, err := newClient(context.Background(), ":", ""); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
@@ -44,28 +48,14 @@ func TestNewClient(t *testing.T) {
 
 	*isAnonymous = false
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	readUsername = func(t *tty.TTY) (string, error) { return "", io.EOF }
+	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	if _, err := newClient(context.Background(), ts.URL, fp); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	tmpStdin := os.Stdin
-	os.Stdin = pr
-	if _, err := pw.WriteString("\n\n"); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		os.Stdin = tmpStdin
-		if err := pr.Close(); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-		if err := pw.Close(); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
+	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
+	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	if _, err := newClient(context.Background(), ts.URL, fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -83,30 +73,19 @@ func TestGetToken(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	readUsername = func(t *tty.TTY) (string, error) { return "", io.EOF }
+	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
+	if _, err := getToken(context.Background(), nil, ""); err == nil {
+		t.Fatalf("should be fail: %v", err)
+	}
+
 	apiURL, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	tmpStdin := os.Stdin
-	os.Stdin = pr
-	if _, err := pw.WriteString("\n\n\n\n\n\n"); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		os.Stdin = tmpStdin
-		if err := pr.Close(); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-		if err := pw.Close(); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-
+	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
+	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	if _, err := getToken(context.Background(), apiURL, ""); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
@@ -134,16 +113,8 @@ func TestGetToken(t *testing.T) {
 }
 
 func TestPrompt(t *testing.T) {
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	tmpStdin := os.Stdin
-	os.Stdin = pr
-	if _, err := pw.WriteString("foo\nbar\n"); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-
+	readUsername = func(t *tty.TTY) (string, error) { return "foo", nil }
+	readPassword = func(t *tty.TTY) (string, error) { return "bar", nil }
 	u, p, err := prompt(context.Background())
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
@@ -155,14 +126,14 @@ func TestPrompt(t *testing.T) {
 		t.Fatalf("want %q but %q", "bar", u)
 	}
 
-	os.Stdin = tmpStdin
-	if err := pr.Close(); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if err := pw.Close(); err != nil {
-		t.Fatalf("should not be fail: %v", err)
+	readUsername = func(t *tty.TTY) (string, error) { return "", io.EOF }
+	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
+	if _, _, err = prompt(context.Background()); err == nil {
+		t.Fatalf("should be fail: %v", err)
 	}
 
+	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
+	readPassword = func(t *tty.TTY) (string, error) { return "", io.EOF }
 	if _, _, err = prompt(context.Background()); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}

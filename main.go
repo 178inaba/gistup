@@ -17,7 +17,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/google/go-github/github"
-	"github.com/howeyc/gopass"
+	tty "github.com/mattn/go-tty"
 	homedir "github.com/mitchellh/go-homedir"
 	uuid "github.com/satori/go.uuid"
 )
@@ -28,6 +28,14 @@ var (
 	isAnonymous = flag.Bool("a", false, "Create anonymous gist")
 	description = flag.String("d", "", "Description of gist")
 	isPublic    = flag.Bool("p", false, "Create public gist")
+
+	// Variable function for testing.
+	readUsername = func(t *tty.TTY) (string, error) {
+		return t.ReadString()
+	}
+	readPassword = func(t *tty.TTY) (string, error) {
+		return t.ReadPassword()
+	}
 )
 
 func main() {
@@ -168,29 +176,47 @@ func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (strin
 }
 
 func prompt(ctx context.Context) (string, string, error) {
-	// Login username from stdin.
-	fmt.Print("Username: ")
-	ch := make(chan string)
-	go func() {
-		var s string
-		fmt.Scanln(&s)
-		ch <- s
-	}()
-	var username string
-	select {
-	case <-ctx.Done():
-		return "", "", ctx.Err()
-	case username = <-ch:
+	t, err := tty.Open()
+	if err != nil {
+		return "", "", err
 	}
+	defer t.Close()
 
-	// Password from stdin.
-	fmt.Print("Password: ")
-	pBytes, err := gopass.GetPasswd()
+	// Login username from tty.
+	username, err := readString(ctx, "Username", readUsername, t)
 	if err != nil {
 		return "", "", err
 	}
 
-	return username, string(pBytes), nil
+	// Password from tty.
+	password, err := readString(ctx, "Password", readPassword, t)
+	if err != nil {
+		return "", "", err
+	}
+
+	return username, password, nil
+}
+
+func readString(ctx context.Context, hint string, readFunc func(t *tty.TTY) (string, error), t *tty.TTY) (string, error) {
+	fmt.Printf("%s: ", hint)
+	ch := make(chan string)
+	errCh := make(chan error)
+	go func() {
+		s, err := readFunc(t)
+		if err != nil {
+			errCh <- err
+		}
+		ch <- s
+	}()
+	var s string
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case s = <-ch:
+	case err := <-errCh:
+		return "", err
+	}
+	return s, nil
 }
 
 func saveToken(token, configFilePath string) error {
