@@ -244,6 +244,43 @@ func TestCreateGist(t *testing.T) {
 	if *g.Files[github.GistFilename(fileName)].Content != tc {
 		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(fileName)].Content)
 	}
+
+	tmpStdin := os.Stdin
+	defer func() {
+		os.Stdin = tmpStdin
+	}()
+
+	pr, _, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	os.Stdin = pr
+	if err := pr.Close(); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if _, err := createGist(context.Background(), true, nil, c.Gists); err == nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	os.Stdin = pr
+	if _, err := pw.WriteString("foobar"); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	if err := pw.Close(); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	defer func() {
+		if err := pr.Close(); err != nil {
+			t.Fatalf("should not be fail: %v", err)
+		}
+	}()
+	if _, err := createGist(context.Background(), true, nil, c.Gists); err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
 }
 
 func TestReadFile(t *testing.T) {
