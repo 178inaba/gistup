@@ -25,9 +25,10 @@ import (
 const defaultTokenFilePath = "gistup/token"
 
 var (
-	isAnonymous = flag.Bool("a", false, "Create anonymous gist")
-	description = flag.String("d", "", "Description of gist")
-	isPublic    = flag.Bool("p", false, "Create public gist")
+	isAnonymous   = flag.Bool("a", false, "Create anonymous gist")
+	description   = flag.String("d", "", "Description of gist")
+	stdinFileName = flag.String("n", "", "File name when upload standard input")
+	isPublic      = flag.Bool("p", false, "Create public gist")
 
 	// Variable function for testing.
 	readUsername = func(t *tty.TTY) (string, error) {
@@ -51,9 +52,14 @@ func main() {
 
 func run() int {
 	args := flag.Args()
-	var isFromStdin bool
+	var stdinContent string
 	if len(args) == 0 {
-		isFromStdin = true
+		bs, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			log.Print(err)
+			return 1
+		}
+		stdinContent = string(bs)
 	}
 
 	sigCh := make(chan os.Signal, 1)
@@ -62,7 +68,6 @@ func run() int {
 	go func() {
 		<-sigCh
 		cancel()
-		os.Stdin.Close()
 	}()
 
 	tokenFilePath, err := getTokenFilePath()
@@ -78,7 +83,7 @@ reAuth:
 		return 1
 	}
 
-	g, err := createGist(ctx, isFromStdin, args, c.Gists)
+	g, err := createGist(ctx, args, stdinContent, c.Gists)
 	if err != nil {
 		// If bad token, Authentication again.
 		if errResp, ok := err.(*github.ErrorResponse); ok &&
@@ -232,16 +237,9 @@ func saveToken(token, configFilePath string) error {
 	return nil
 }
 
-func createGist(ctx context.Context, isFromStdin bool, fileNames []string, gists *github.GistsService) (*github.Gist, error) {
+func createGist(ctx context.Context, fileNames []string, stdinContent string, gists *github.GistsService) (*github.Gist, error) {
 	files := map[github.GistFilename]github.GistFile{}
-	if isFromStdin {
-		bs, err := ioutil.ReadAll(os.Stdin)
-		if err != nil {
-			return nil, err
-		}
-		files[github.GistFilename("")] =
-			github.GistFile{Content: github.String(string(bs))}
-	} else {
+	if len(fileNames) != 0 {
 		for _, fileName := range fileNames {
 			var fp string
 			if filepath.IsAbs(fileName) {
@@ -262,6 +260,9 @@ func createGist(ctx context.Context, isFromStdin bool, fileNames []string, gists
 			files[github.GistFilename(filepath.Base(fileName))] =
 				github.GistFile{Content: github.String(content)}
 		}
+	} else {
+		files[github.GistFilename(*stdinFileName)] =
+			github.GistFile{Content: github.String(stdinContent)}
 	}
 
 	g, _, err := gists.Create(ctx, &github.Gist{
