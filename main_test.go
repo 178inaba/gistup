@@ -220,11 +220,11 @@ func TestCreateGist(t *testing.T) {
 	c := github.NewClient(nil)
 	c.BaseURL = apiURL
 
-	if _, err := createGist(context.Background(), nil, c.Gists); err == nil {
+	if _, err := createGist(context.Background(), false, nil, c.Gists); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	if _, err := createGist(context.Background(), []string{""}, c.Gists); err == nil {
+	if _, err := createGist(context.Background(), false, []string{""}, c.Gists); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
@@ -237,7 +237,7 @@ func TestCreateGist(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	g, err := createGist(context.Background(), []string{fp}, c.Gists)
+	g, err := createGist(context.Background(), false, []string{fp}, c.Gists)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
