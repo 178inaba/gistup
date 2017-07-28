@@ -51,9 +51,9 @@ func main() {
 
 func run() int {
 	args := flag.Args()
+	var isFromStdin bool
 	if len(args) == 0 {
-		flag.Usage()
-		return 1
+		isFromStdin = true
 	}
 
 	sigCh := make(chan os.Signal, 1)
@@ -77,7 +77,7 @@ reAuth:
 		return 1
 	}
 
-	g, err := createGist(ctx, args, c.Gists)
+	g, err := createGist(ctx, isFromStdin, args, c.Gists)
 	if err != nil {
 		// If bad token, Authentication again.
 		if errResp, ok := err.(*github.ErrorResponse); ok &&
@@ -231,27 +231,36 @@ func saveToken(token, configFilePath string) error {
 	return nil
 }
 
-func createGist(ctx context.Context, fileNames []string, gists *github.GistsService) (*github.Gist, error) {
+func createGist(ctx context.Context, isFromStdin bool, fileNames []string, gists *github.GistsService) (*github.Gist, error) {
 	files := map[github.GistFilename]github.GistFile{}
-	for _, fileName := range fileNames {
-		var fp string
-		if filepath.IsAbs(fileName) {
-			fp = fileName
-		} else {
-			wd, err := os.Getwd()
-			if err != nil {
-				return nil, err
-			}
-			fp = filepath.Join(wd, fileName)
-		}
-
-		content, err := readFile(fp)
+	if isFromStdin {
+		bs, err := ioutil.ReadAll(os.Stdin)
 		if err != nil {
 			return nil, err
 		}
+		files[github.GistFilename("")] =
+			github.GistFile{Content: github.String(string(bs))}
+	} else {
+		for _, fileName := range fileNames {
+			var fp string
+			if filepath.IsAbs(fileName) {
+				fp = fileName
+			} else {
+				wd, err := os.Getwd()
+				if err != nil {
+					return nil, err
+				}
+				fp = filepath.Join(wd, fileName)
+			}
 
-		files[github.GistFilename(filepath.Base(fileName))] =
-			github.GistFile{Content: github.String(content)}
+			content, err := readFile(fp)
+			if err != nil {
+				return nil, err
+			}
+
+			files[github.GistFilename(filepath.Base(fileName))] =
+				github.GistFile{Content: github.String(content)}
+		}
 	}
 
 	g, _, err := gists.Create(ctx, &github.Gist{
