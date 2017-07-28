@@ -21,6 +21,8 @@ If the browser can not be opened, the URL will be displayed.
   * Create anonymous gist.
 * `-d <description>`
   * Description of gist.
+* `-n <file_name>`
+  * File name when upload standard input.
 * `-p`
   * Create public gist.
 
