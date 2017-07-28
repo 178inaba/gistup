@@ -62,6 +62,7 @@ func run() int {
 	go func() {
 		<-sigCh
 		cancel()
+		os.Stdin.Close()
 	}()
 
 	tokenFilePath, err := getTokenFilePath()
