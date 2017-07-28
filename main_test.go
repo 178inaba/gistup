@@ -220,11 +220,11 @@ func TestCreateGist(t *testing.T) {
 	c := github.NewClient(nil)
 	c.BaseURL = apiURL
 
-	if _, err := createGist(context.Background(), false, nil, c.Gists); err == nil {
+	if _, err := createGist(context.Background(), nil, "", c.Gists); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	if _, err := createGist(context.Background(), false, []string{""}, c.Gists); err == nil {
+	if _, err := createGist(context.Background(), []string{""}, "", c.Gists); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
@@ -237,7 +237,7 @@ func TestCreateGist(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	g, err := createGist(context.Background(), false, []string{fp}, c.Gists)
+	g, err := createGist(context.Background(), []string{fp}, "", c.Gists)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -245,41 +245,13 @@ func TestCreateGist(t *testing.T) {
 		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(fileName)].Content)
 	}
 
-	tmpStdin := os.Stdin
-	defer func() {
-		os.Stdin = tmpStdin
-	}()
-
-	pr, _, err := os.Pipe()
+	*stdinFileName = fileName
+	g, err = createGist(context.Background(), nil, tc, c.Gists)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
-	os.Stdin = pr
-	if err := pr.Close(); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if _, err := createGist(context.Background(), true, nil, c.Gists); err == nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	os.Stdin = pr
-	if _, err := pw.WriteString("foobar"); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if err := pw.Close(); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		if err := pr.Close(); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	if _, err := createGist(context.Background(), true, nil, c.Gists); err != nil {
-		t.Fatalf("should not be fail: %v", err)
+	if *g.Files[github.GistFilename(fileName)].Content != tc {
+		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(fileName)].Content)
 	}
 }
 
