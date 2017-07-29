@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/178inaba/gistup/badge.svg?branch=master)](https://coveralls.io/github/178inaba/gistup?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/178inaba/gistup)](https://goreportcard.com/report/github.com/178inaba/gistup)
 
-Gist uploader for cli
+Gist uploader for cli.
 
 ## Usage
 
