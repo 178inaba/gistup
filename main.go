@@ -35,7 +35,7 @@ var (
 		return t.ReadString()
 	}
 	readPassword = func(t *tty.TTY) (string, error) {
-		return t.ReadPassword()
+		return t.ReadPasswordNoEcho()
 	}
 )
 
