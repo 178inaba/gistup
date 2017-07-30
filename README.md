@@ -10,6 +10,8 @@ Gist uploader for cli.
 
 ```console
 $ gistup target.go
+# Or upload from standard input.
+$ stdin | gistup
 ```
 
 The github gist opens automatically in the browser.  
