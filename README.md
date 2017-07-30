@@ -10,6 +10,7 @@ Gist uploader for cli.
 
 ```console
 $ gistup target.go
+
 # Or upload from standard input.
 $ stdin | gistup
 ```
