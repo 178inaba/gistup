@@ -35,28 +35,32 @@ func TestNewClient(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	*apiRawurl = ":"
 	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
-	if _, err := newClient(context.Background(), ":", ""); err == nil {
+	if _, err := newClient(context.Background(), ""); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
 	*isAnonymous = true
-	if _, err := newClient(context.Background(), ts.URL, ""); err != nil {
+	*apiRawurl = ts.URL
+	if _, err := newClient(context.Background(), ""); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
 	*isAnonymous = false
+	*apiRawurl = ts.URL
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
 	readUsername = func(t *tty.TTY) (string, error) { return "", io.EOF }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
-	if _, err := newClient(context.Background(), ts.URL, fp); err == nil {
+	if _, err := newClient(context.Background(), fp); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
+	*apiRawurl = ts.URL
 	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
-	if _, err := newClient(context.Background(), ts.URL, fp); err != nil {
+	if _, err := newClient(context.Background(), fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 }

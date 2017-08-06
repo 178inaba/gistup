@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -27,8 +28,10 @@ const defaultTokenFilePath = "gistup/token"
 var (
 	isAnonymous   = flag.Bool("a", false, "Create anonymous gist")
 	description   = flag.String("d", "", "Description of gist")
+	isInsecure    = flag.Bool("insecure", false, "Allow connections to SSL sites without certs")
 	stdinFileName = flag.String("n", "", "File name when upload standard input")
 	isPublic      = flag.Bool("p", false, "Create public gist")
+	apiRawurl     = flag.String("url", "", "For GitHub Enterprise, specify the URL")
 
 	// Variable function for testing.
 	readUsername = func(t *tty.TTY) (string, error) {
@@ -78,7 +81,7 @@ func run() int {
 	}
 
 reAuth:
-	c, err := newClient(ctx, "", tokenFilePath)
+	c, err := newClient(ctx, tokenFilePath)
 	if err != nil {
 		log.Print(err)
 		return 1
@@ -121,11 +124,11 @@ func getTokenFilePath() (string, error) {
 	return filepath.Join(home, ".config", defaultTokenFilePath), nil
 }
 
-func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Client, error) {
+func newClient(ctx context.Context, tokenFilePath string) (*github.Client, error) {
 	var apiURL *url.URL
-	if apiRawurl != "" {
+	if *apiRawurl != "" {
 		var err error
-		apiURL, err = url.Parse(apiRawurl)
+		apiURL, err = url.Parse(*apiRawurl)
 		if err != nil {
 			return nil, err
 		}
@@ -147,6 +150,10 @@ func newClient(ctx context.Context, apiRawurl, tokenFilePath string) (*github.Cl
 		}
 	}
 
+	if *isInsecure {
+		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: tr})
+	}
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	c := github.NewClient(oauth2.NewClient(ctx, ts))
 	if apiURL != nil {
@@ -162,6 +169,10 @@ func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (strin
 	}
 
 	t := &github.BasicAuthTransport{Username: username, Password: password}
+	if *isInsecure {
+		t.Transport =
+			&http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	}
 	c := github.NewClient(t.Client())
 	if apiURL != nil {
 		c.BaseURL = apiURL
