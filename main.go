@@ -166,7 +166,7 @@ func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (strin
 	if apiURL != nil {
 		c.BaseURL = apiURL
 	}
-	a, _, err := c.Authorizations.Create(context.Background(), &github.AuthorizationRequest{
+	a, _, err := c.Authorizations.Create(ctx, &github.AuthorizationRequest{
 		Scopes:      []github.Scope{"gist"},
 		Note:        github.String("gistup"),
 		Fingerprint: github.String(uuid.NewV4().String()),
