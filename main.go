@@ -81,7 +81,7 @@ func run() int {
 	}
 
 reAuth:
-	c, err := newClient(ctx, tokenFilePath)
+	c, err := getClientWithToken(ctx, tokenFilePath)
 	if err != nil {
 		log.Print(err)
 		return 1
@@ -124,7 +124,7 @@ func getTokenFilePath() (string, error) {
 	return filepath.Join(home, ".config", defaultTokenFilePath), nil
 }
 
-func newClient(ctx context.Context, tokenFilePath string) (*github.Client, error) {
+func getClientWithToken(ctx context.Context, tokenFilePath string) (*github.Client, error) {
 	var apiURL *url.URL
 	if *apiRawurl != "" {
 		var err error
