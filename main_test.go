@@ -56,6 +56,7 @@ func TestGetClientWithToken(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
+	*isInsecure = true
 	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	if _, err := getClientWithToken(context.Background(), fp); err != nil {
@@ -105,6 +106,7 @@ func TestGetToken(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
+	*isInsecure = true
 	token, err := getToken(context.Background(), apiURL, fp)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
