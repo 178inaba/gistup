@@ -46,7 +46,7 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: %s [-a] [-d <description>] [-p] <file>...\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s [-a] [-d <description>] [-insecure] [-p] [-url <api_baseurl>] <file>...\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "       stdin | %s [-a] [-d <description>] [-n <file_name>] [-p]\n", os.Args[0])
 		flag.PrintDefaults()
 	}
