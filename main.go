@@ -31,7 +31,7 @@ var (
 	isInsecure    = flag.Bool("insecure", false, "Allow connections to SSL sites without certs")
 	stdinFileName = flag.String("n", "", "File name when upload standard input")
 	isPublic      = flag.Bool("p", false, "Create public gist")
-	apiRawurl     = flag.String("url", "", "For GitHub Enterprise, specify the URL")
+	apiRawurl     = flag.String("url", "", "For GitHub Enterprise, specify the base URL of the API")
 
 	// Variable function for testing.
 	readUsername = func(t *tty.TTY) (string, error) {

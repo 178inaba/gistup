@@ -24,10 +24,14 @@ If the browser can not be opened, the URL will be displayed.
   * Create anonymous gist.
 * `-d <description>`
   * Description of gist.
+* `-insecure`
+  * Allow connections to SSL sites without certs.
 * `-n <file_name>`
   * File name when upload standard input.
 * `-p`
   * Create public gist.
+* `-url <api_baseurl>`
+  * For GitHub Enterprise, specify the base URL of the API.
 
 ## Install
 
