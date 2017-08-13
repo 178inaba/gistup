@@ -18,14 +18,14 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func TestGetTokenFilePath(t *testing.T) {
-	fp, err := getTokenFilePath()
+func TestGetConfigDir(t *testing.T) {
+	dir, err := getConfigDir()
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
-	if !strings.Contains(fp, defaultTokenFilePath) {
+	if !strings.Contains(dir, configDirName) {
 		t.Fatalf("%q should be contained in output of config file path: %v",
-			defaultTokenFilePath, fp)
+			configDirName, dir)
 	}
 }
 
@@ -44,12 +44,12 @@ func TestGetClientWithToken(t *testing.T) {
 
 	*isAnonymous = true
 	*apiRawurl = ts.URL
-	if _, err := getClientWithToken(context.Background(), ""); err != nil {
+	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	if _, err := getClientWithToken(context.Background(), fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
 	*isAnonymous = false
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
 	readUsername = func(t *tty.TTY) (string, error) { return "", io.EOF }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	if _, err := getClientWithToken(context.Background(), fp); err == nil {
@@ -86,10 +86,11 @@ func TestGetToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
+	conf := &config{APIRawurl: ts.URL, APIURL: apiURL}
 
 	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
-	if _, err := getToken(context.Background(), apiURL, ""); err == nil {
+	if _, err := getToken(context.Background(), conf, ""); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
@@ -102,12 +103,12 @@ func TestGetToken(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	if _, err := getToken(context.Background(), apiURL, filepath.Join(fp, "foo")); err == nil {
+	if _, err := getToken(context.Background(), conf, filepath.Join(fp, "foo")); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	*isInsecure = true
-	token, err := getToken(context.Background(), apiURL, fp)
+	conf.IsInsecure = true
+	token, err := getToken(context.Background(), conf, fp)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -152,7 +153,7 @@ func TestPrompt(t *testing.T) {
 func TestSaveToken(t *testing.T) {
 	token := "foobar"
 	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	if err := saveToken(token, fp); err != nil {
+	if err := save(token, fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
@@ -185,7 +186,7 @@ func TestSaveToken(t *testing.T) {
 		t.Fatalf("want %q but %q", token, string(bs))
 	}
 
-	if err := saveToken("", filepath.Join(fp, "foo")); err == nil {
+	if err := save("", filepath.Join(fp, "foo")); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 
@@ -198,7 +199,7 @@ func TestSaveToken(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	if err := saveToken("", errFP); err == nil {
+	if err := save("", errFP); err == nil {
 		t.Fatalf("should be fail: %v", err)
 	}
 }
@@ -270,12 +271,12 @@ func TestReadFile(t *testing.T) {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
-	content, err := readFile(fp)
+	bs, err := readFile(fp)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
-	if content != tc {
-		t.Fatalf("want %q but %q", tc, content)
+	if string(bs) != tc {
+		t.Fatalf("want %q but %q", tc, bs)
 	}
 
 	if _, err := readFile(""); err == nil {

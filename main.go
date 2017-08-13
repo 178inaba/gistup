@@ -20,10 +20,15 @@ import (
 	"github.com/google/go-github/github"
 	tty "github.com/mattn/go-tty"
 	homedir "github.com/mitchellh/go-homedir"
+	toml "github.com/pelletier/go-toml"
 	uuid "github.com/satori/go.uuid"
 )
 
-const defaultTokenFilePath = "gistup/token"
+const (
+	configDirName  = "gistup"
+	configFileName = "config.toml"
+	tokenFileName  = "token"
+)
 
 var (
 	isAnonymous   = flag.Bool("a", false, "Create anonymous gist")
@@ -41,6 +46,12 @@ var (
 		return t.ReadPasswordNoEcho()
 	}
 )
+
+type config struct {
+	APIRawurl  string   `toml:"url"`
+	APIURL     *url.URL `toml:"-"`
+	IsInsecure bool     `toml:"insecure"`
+}
 
 func main() {
 	log.SetFlags(0)
@@ -74,14 +85,14 @@ func run() int {
 		cancel()
 	}()
 
-	tokenFilePath, err := getTokenFilePath()
+	confDirPath, err := getConfigDir()
 	if err != nil {
 		log.Print(err)
 		return 1
 	}
 
 reAuth:
-	c, err := getClientWithToken(ctx, tokenFilePath)
+	c, err := getClientWithToken(ctx, confDirPath)
 	if err != nil {
 		log.Print(err)
 		return 1
@@ -93,7 +104,7 @@ reAuth:
 		if errResp, ok := err.(*github.ErrorResponse); ok &&
 			errResp.Response.StatusCode == http.StatusUnauthorized {
 			// Remove bad token file.
-			if err := os.Remove(tokenFilePath); err != nil {
+			if err := os.RemoveAll(confDirPath); err != nil {
 				log.Print(err)
 				return 1
 			}
@@ -113,69 +124,97 @@ reAuth:
 	return 0
 }
 
-func getTokenFilePath() (string, error) {
+func getConfigDir() (string, error) {
 	if runtime.GOOS == "windows" {
-		return filepath.Join(os.Getenv("APPDATA"), defaultTokenFilePath), nil
+		return filepath.Join(os.Getenv("APPDATA"), configDirName), nil
 	}
 	home, err := homedir.Dir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", defaultTokenFilePath), nil
+	return filepath.Join(home, ".config", configDirName), nil
 }
 
-func getClientWithToken(ctx context.Context, tokenFilePath string) (*github.Client, error) {
-	var apiURL *url.URL
-	if *apiRawurl != "" {
-		var err error
-		apiURL, err = url.Parse(*apiRawurl)
-		if err != nil {
-			return nil, err
-		}
+func getClientWithToken(ctx context.Context, confDirPath string) (*github.Client, error) {
+	// Read config.
+	conf, err := getConfig(confDirPath)
+	if err != nil {
+		return nil, err
 	}
 
 	if *isAnonymous {
 		c := github.NewClient(nil)
-		if apiURL != nil {
-			c.BaseURL = apiURL
+		if conf.APIURL != nil {
+			c.BaseURL = conf.APIURL
 		}
 		return c, nil
 	}
 
-	token, err := readFile(tokenFilePath)
+	tokenFilePath := filepath.Join(confDirPath, tokenFileName)
+	bs, err := readFile(tokenFilePath)
+	token := string(bs)
 	if err != nil {
-		token, err = getToken(ctx, apiURL, tokenFilePath)
+		token, err = getToken(ctx, conf, tokenFilePath)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if *isInsecure {
+	if conf.IsInsecure {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: tr})
 	}
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	c := github.NewClient(oauth2.NewClient(ctx, ts))
-	if apiURL != nil {
-		c.BaseURL = apiURL
+	if conf.APIURL != nil {
+		c.BaseURL = conf.APIURL
 	}
 	return c, nil
 }
 
-func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (string, error) {
+func getConfig(confDirPath string) (*config, error) {
+	confFilePath := filepath.Join(confDirPath, configFileName)
+	var conf config
+	bs, err := readFile(confFilePath)
+	if err == nil {
+		if err := toml.Unmarshal(bs, &conf); err != nil {
+			return nil, err
+		}
+	}
+
+	conf.IsInsecure = *isInsecure
+	if *apiRawurl != "" {
+		conf.APIRawurl = *apiRawurl
+		conf.APIURL, err = url.Parse(conf.APIRawurl)
+		if err != nil {
+			return nil, err
+		}
+
+		bs, err := toml.Marshal(conf)
+		if err != nil {
+			return nil, err
+		}
+		if err := save(string(bs), confFilePath); err != nil {
+			return nil, err
+		}
+	}
+	return &conf, nil
+}
+
+func getToken(ctx context.Context, conf *config, tokenFilePath string) (string, error) {
 	username, password, err := prompt(ctx)
 	if err != nil {
 		return "", err
 	}
 
 	t := &github.BasicAuthTransport{Username: username, Password: password}
-	if *isInsecure {
+	if conf.IsInsecure {
 		t.Transport =
 			&http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	}
 	c := github.NewClient(t.Client())
-	if apiURL != nil {
-		c.BaseURL = apiURL
+	if conf.APIURL != nil {
+		c.BaseURL = conf.APIURL
 	}
 	a, _, err := c.Authorizations.Create(ctx, &github.AuthorizationRequest{
 		Scopes:      []github.Scope{"gist"},
@@ -187,7 +226,7 @@ func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (strin
 	}
 
 	token := a.GetToken()
-	if err := saveToken(token, tokenFilePath); err != nil {
+	if err := save(token, tokenFilePath); err != nil {
 		return "", err
 	}
 	return token, nil
@@ -237,15 +276,13 @@ func readString(ctx context.Context, hint string, readFunc func(t *tty.TTY) (str
 	return s, nil
 }
 
-func saveToken(token, configFilePath string) error {
-	if err := os.MkdirAll(filepath.Dir(configFilePath), 0700); err != nil {
+func save(s, saveFilePath string) error {
+	if err := os.MkdirAll(filepath.Dir(saveFilePath), 0700); err != nil {
 		return err
 	}
-
-	if err := ioutil.WriteFile(configFilePath, []byte(token), 0600); err != nil {
+	if err := ioutil.WriteFile(saveFilePath, []byte(s), 0600); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -264,13 +301,13 @@ func createGist(ctx context.Context, fileNames []string, stdinContent string, gi
 				fp = filepath.Join(wd, fileName)
 			}
 
-			content, err := readFile(fp)
+			bs, err := readFile(fp)
 			if err != nil {
 				return nil, err
 			}
 
 			files[github.GistFilename(filepath.Base(fileName))] =
-				github.GistFile{Content: github.String(content)}
+				github.GistFile{Content: github.String(string(bs))}
 		}
 	} else {
 		files[github.GistFilename(*stdinFileName)] =
@@ -289,19 +326,17 @@ func createGist(ctx context.Context, fileNames []string, stdinContent string, gi
 	return g, nil
 }
 
-func readFile(fp string) (string, error) {
+func readFile(fp string) ([]byte, error) {
 	f, err := os.Open(fp)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer f.Close()
-
 	bs, err := ioutil.ReadAll(f)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	return string(bs), nil
+	return bs, nil
 }
 
 func openURL(rawurl string) error {
