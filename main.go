@@ -185,16 +185,11 @@ func getConfig(confDirPath string) (*config, error) {
 	conf.IsInsecure = *isInsecure
 	if *apiRawurl != "" {
 		conf.APIRawurl = *apiRawurl
-	}
-
-	if conf.APIRawurl != "" {
 		conf.APIURL, err = url.Parse(conf.APIRawurl)
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	if *apiRawurl != "" {
 		bs, err := toml.Marshal(conf)
 		if err != nil {
 			return nil, err
@@ -203,7 +198,6 @@ func getConfig(confDirPath string) (*config, error) {
 			return nil, err
 		}
 	}
-
 	return &conf, nil
 }
 
