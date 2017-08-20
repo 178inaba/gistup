@@ -204,7 +204,7 @@ func TestSaveToken(t *testing.T) {
 }
 
 func TestCreateGist(t *testing.T) {
-	fileName := uuid.NewV4().String()
+	filename := uuid.NewV4().String()
 	tc := "foobar"
 	canErr := true
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +213,7 @@ func TestCreateGist(t *testing.T) {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprintln(w, fmt.Sprintf(`{"files":{"%s":{"content":"%s"}}}`, fileName, tc))
+		fmt.Fprintln(w, fmt.Sprintf(`{"files":{"%s":{"content":"%s"}}}`, filename, tc))
 	}))
 	defer ts.Close()
 
@@ -232,7 +232,7 @@ func TestCreateGist(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	fp := filepath.Join(os.TempDir(), fileName)
+	fp := filepath.Join(os.TempDir(), filename)
 	if err := ioutil.WriteFile(fp, []byte(tc), 0400); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -245,17 +245,17 @@ func TestCreateGist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
-	if *g.Files[github.GistFilename(fileName)].Content != tc {
-		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(fileName)].Content)
+	if *g.Files[github.GistFilename(filename)].Content != tc {
+		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(filename)].Content)
 	}
 
-	*stdinFileName = fileName
+	*stdinFilename = filename
 	g, err = createGist(context.Background(), nil, tc, c.Gists)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
-	if *g.Files[github.GistFilename(fileName)].Content != tc {
-		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(fileName)].Content)
+	if *g.Files[github.GistFilename(filename)].Content != tc {
+		t.Fatalf("want %q but %q", tc, *g.Files[github.GistFilename(filename)].Content)
 	}
 }
 

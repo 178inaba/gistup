@@ -29,7 +29,7 @@ var (
 	isAnonymous   = flag.Bool("a", false, "Create anonymous gist")
 	description   = flag.String("d", "", "Description of gist")
 	isInsecure    = flag.Bool("insecure", false, "Allow connections to SSL sites without certs")
-	stdinFileName = flag.String("n", "", "File name when upload standard input")
+	stdinFilename = flag.String("n", "", "File name when upload standard input")
 	isPublic      = flag.Bool("p", false, "Create public gist")
 	apiRawurl     = flag.String("url", "", "For GitHub Enterprise, specify the base URL of the API")
 
@@ -249,19 +249,19 @@ func saveToken(token, configFilePath string) error {
 	return nil
 }
 
-func createGist(ctx context.Context, fileNames []string, stdinContent string, gists *github.GistsService) (*github.Gist, error) {
+func createGist(ctx context.Context, filenames []string, stdinContent string, gists *github.GistsService) (*github.Gist, error) {
 	files := map[github.GistFilename]github.GistFile{}
-	if len(fileNames) != 0 {
-		for _, fileName := range fileNames {
+	if len(filenames) != 0 {
+		for _, filename := range filenames {
 			var fp string
-			if filepath.IsAbs(fileName) {
-				fp = fileName
+			if filepath.IsAbs(filename) {
+				fp = filename
 			} else {
 				wd, err := os.Getwd()
 				if err != nil {
 					return nil, err
 				}
-				fp = filepath.Join(wd, fileName)
+				fp = filepath.Join(wd, filename)
 			}
 
 			content, err := readFile(fp)
@@ -269,11 +269,11 @@ func createGist(ctx context.Context, fileNames []string, stdinContent string, gi
 				return nil, err
 			}
 
-			files[github.GistFilename(filepath.Base(fileName))] =
+			files[github.GistFilename(filepath.Base(filename))] =
 				github.GistFile{Content: github.String(content)}
 		}
 	} else {
-		files[github.GistFilename(*stdinFileName)] =
+		files[github.GistFilename(*stdinFilename)] =
 			github.GistFile{Content: github.String(stdinContent)}
 	}
 
