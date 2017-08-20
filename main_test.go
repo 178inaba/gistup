@@ -43,7 +43,7 @@ func TestGetClientWithToken(t *testing.T) {
 	}
 
 	*isAnonymous = true
-	*apiRawurl = ts.URL
+	*apiRawurl = ts.URL + "/"
 	if _, err := getClientWithToken(context.Background(), ""); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestGetToken(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	apiURL, err := url.Parse(ts.URL)
+	apiURL, err := url.Parse(ts.URL + "/")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -217,7 +217,7 @@ func TestCreateGist(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	apiURL, err := url.Parse(ts.URL)
+	apiURL, err := url.Parse(ts.URL + "/")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
