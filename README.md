@@ -18,6 +18,13 @@ $ stdin | gistup
 The github gist opens automatically in the browser.  
 If the browser can not be opened, the URL will be displayed.
 
+The token is saved in the following file and omitting the user name and password entry from next time:
+
+* macOS, Linux
+  * `~/.config/gistup/token`
+* Windows
+  * `%APPDATA%\gistup\token`
+
 ### Options
 
 * `-a`
