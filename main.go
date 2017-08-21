@@ -50,7 +50,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "       stdin | %s [-a] [-d <description>] [-n <file_name>] [-p]\n\n", os.Args[0])
 		fmt.Fprintln(os.Stderr, "The token is saved in the following file and omitting the user name and password entry from next time:")
 		if runtime.GOOS == "windows" {
-			fmt.Fprintln(os.Stderr, "%APPDATA%\\gistup\\token")
+			fmt.Fprintf(os.Stderr, "%%APPDATA%%\\gistup\\token\n")
 		} else {
 			fmt.Fprintln(os.Stderr, "~/.config/gistup/token")
 		}
