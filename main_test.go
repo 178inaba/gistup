@@ -23,9 +23,9 @@ func TestGetTokenFilePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
-	if !strings.Contains(fp, defaultTokenFilePath) {
+	if !strings.Contains(fp, tokenFilePath) {
 		t.Fatalf("%q should be contained in output of config file path: %v",
-			defaultTokenFilePath, fp)
+			tokenFilePath, fp)
 	}
 }
 
