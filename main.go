@@ -23,7 +23,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-const tokenFilePath = "gistup/token"
+const tokenFileEdgePath = "gistup/token"
 
 var (
 	isAnonymous   = flag.Bool("a", false, "Create anonymous gist")
@@ -115,13 +115,13 @@ reAuth:
 
 func getTokenFilePath() (string, error) {
 	if runtime.GOOS == "windows" {
-		return filepath.Join(os.Getenv("APPDATA"), tokenFilePath), nil
+		return filepath.Join(os.Getenv("APPDATA"), tokenFileEdgePath), nil
 	}
 	home, err := homedir.Dir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", tokenFilePath), nil
+	return filepath.Join(home, ".config", tokenFileEdgePath), nil
 }
 
 func getClientWithToken(ctx context.Context, tokenFilePath string) (*github.Client, error) {
