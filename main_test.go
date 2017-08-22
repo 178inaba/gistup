@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,6 +18,21 @@ import (
 	tty "github.com/mattn/go-tty"
 	uuid "github.com/satori/go.uuid"
 )
+
+func TestRun(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"files":{"README.md":{"content":"# gistup"}},
+			"html_url":"https://gist.github.com/1234567890abcdefghij"}`)
+	}))
+	defer ts.Close()
+
+	*apiRawurl = ts.URL + "/"
+	runCmd = func(c *exec.Cmd) error { return nil }
+
+	if got, want := run(), 0; got != want {
+		t.Fatalf("run exit code %d, want %d", got, want)
+	}
+}
 
 func TestGetTokenFilePath(t *testing.T) {
 	fp, err := getTokenFilePath()

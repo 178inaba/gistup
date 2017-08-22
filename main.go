@@ -40,6 +40,9 @@ var (
 	readPassword = func(t *tty.TTY) (string, error) {
 		return t.ReadPasswordNoEcho()
 	}
+	runCmd = func(c *exec.Cmd) error {
+		return c.Run()
+	}
 )
 
 func main() {
@@ -114,8 +117,8 @@ reAuth:
 		return 1
 	}
 
-	if err := openURL(*g.HTMLURL); err != nil {
-		fmt.Println(*g.HTMLURL)
+	if err := openURL(g.GetHTMLURL()); err != nil {
+		fmt.Println(g.GetHTMLURL())
 	}
 	return 0
 }
@@ -323,7 +326,7 @@ func openURL(rawurl string) error {
 		openCmd = "rundll32.exe"
 		args = append([]string{"url.dll,FileProtocolHandler"}, args...)
 	}
-	if err := exec.Command(openCmd, args...).Run(); err != nil {
+	if err := runCmd(exec.Command(openCmd, args...)); err != nil {
 		return err
 	}
 	return nil
