@@ -44,6 +44,10 @@ var (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
 	flag.Usage = func() {
@@ -59,10 +63,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
-	os.Exit(run())
-}
 
-func run() int {
 	args := flag.Args()
 	var stdinContent string
 	if len(args) == 0 {
