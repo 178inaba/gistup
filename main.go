@@ -43,6 +43,9 @@ var (
 	runCmd = func(c *exec.Cmd) error {
 		return c.Run()
 	}
+	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+		return ioutil.WriteFile(filename, data, perm)
+	}
 )
 
 func main() {
@@ -247,12 +250,12 @@ func readString(ctx context.Context, hint string, readFunc func(t *tty.TTY) (str
 	return s, nil
 }
 
-func saveToken(token, configFilePath string) error {
-	if err := os.MkdirAll(filepath.Dir(configFilePath), 0700); err != nil {
+func saveToken(token, tokenFilePath string) error {
+	if err := os.MkdirAll(filepath.Dir(tokenFilePath), 0700); err != nil {
 		return err
 	}
 
-	if err := ioutil.WriteFile(configFilePath, []byte(token), 0600); err != nil {
+	if err := writeFile(tokenFilePath, []byte(token), 0600); err != nil {
 		return err
 	}
 

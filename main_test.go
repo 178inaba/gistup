@@ -28,7 +28,20 @@ func TestRun(t *testing.T) {
 	defer ts.Close()
 
 	*apiRawurl = ts.URL + "/"
+	tmpReadUsername := readUsername
+	tmpReadPassword := readPassword
+	tmpRunCmd := runCmd
+	tmpWriteFile := writeFile
+	defer func() {
+		readUsername = tmpReadUsername
+		readPassword = tmpReadPassword
+		runCmd = tmpRunCmd
+		writeFile = tmpWriteFile
+	}()
+	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
+	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	runCmd = func(c *exec.Cmd) error { return nil }
+	writeFile = func(filename string, data []byte, perm os.FileMode) error { return nil }
 
 	if got, want := run(), 0; got != want {
 		t.Fatalf("run exit code %d, want %d", got, want)
