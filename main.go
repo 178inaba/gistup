@@ -34,16 +34,11 @@ var (
 	apiRawurl     = flag.String("url", "", "For GitHub Enterprise, specify the base URL of the API")
 
 	// Variable function for testing.
-	readUsername = func(t *tty.TTY) (string, error) {
-		return t.ReadString()
-	}
-	readPassword = func(t *tty.TTY) (string, error) {
-		return t.ReadPasswordNoEcho()
-	}
-	runCmd = func(c *exec.Cmd) error {
-		return c.Run()
-	}
-	writeFile = func(filename string, data []byte, perm os.FileMode) error {
+	readUsername = func(t *tty.TTY) (string, error) { return t.ReadString() }
+	readPassword = func(t *tty.TTY) (string, error) { return t.ReadPasswordNoEcho() }
+	runCmd       = func(c *exec.Cmd) error { return c.Run() }
+	mkdirAll     = func(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
+	writeFile    = func(filename string, data []byte, perm os.FileMode) error {
 		return ioutil.WriteFile(filename, data, perm)
 	}
 )
@@ -251,7 +246,7 @@ func readString(ctx context.Context, hint string, readFunc func(t *tty.TTY) (str
 }
 
 func saveToken(token, tokenFilePath string) error {
-	if err := os.MkdirAll(filepath.Dir(tokenFilePath), 0700); err != nil {
+	if err := mkdirAll(filepath.Dir(tokenFilePath), 0700); err != nil {
 		return err
 	}
 

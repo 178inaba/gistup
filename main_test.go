@@ -31,16 +31,19 @@ func TestRun(t *testing.T) {
 	tmpReadUsername := readUsername
 	tmpReadPassword := readPassword
 	tmpRunCmd := runCmd
+	tmpMkdirAll := mkdirAll
 	tmpWriteFile := writeFile
 	defer func() {
 		readUsername = tmpReadUsername
 		readPassword = tmpReadPassword
 		runCmd = tmpRunCmd
+		mkdirAll = tmpMkdirAll
 		writeFile = tmpWriteFile
 	}()
 	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	runCmd = func(c *exec.Cmd) error { return nil }
+	mkdirAll = func(path string, perm os.FileMode) error { return nil }
 	writeFile = func(filename string, data []byte, perm os.FileMode) error { return nil }
 
 	if got, want := run(), 0; got != want {
