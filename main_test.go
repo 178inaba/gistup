@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -300,41 +301,20 @@ func TestReadFile(t *testing.T) {
 }
 
 func TestOpenURL(t *testing.T) {
-	envPath := os.Getenv("PATH")
-	if err := os.Unsetenv("PATH"); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	defer func() {
-		if err := os.Unsetenv("PATH"); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-		if err := os.Setenv("PATH", envPath); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	if err := openURL("http://example.com/"); err == nil {
-		t.Fatalf("should be fail: %v", err)
+	tests := []struct {
+		runCmd    func(c *exec.Cmd) error
+		wantError bool
+	}{
+		{runCmd: func(c *exec.Cmd) error { return errors.New("should be error") }, wantError: true},
+		{runCmd: func(c *exec.Cmd) error { return nil }, wantError: false},
 	}
 
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
-	if err := os.Setenv("PATH", fp); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	if err := os.Mkdir(fp, 0700); err != nil {
-		t.Fatalf("should not be fail: %v", err)
-	}
-	bins := []string{"xdg-open", "open", "plumb", "rundll32.exe"}
-	for _, bin := range bins {
-		if err := ioutil.WriteFile(filepath.Join(fp, bin), []byte("#!/bin/sh\n"), 0500); err != nil {
-			t.Fatalf("should not be fail: %v", err)
+	for _, test := range tests {
+		runCmd = test.runCmd
+		if err := openURL("http://example.com/"); test.wantError && err == nil {
+			t.Fatalf("Should be fail")
+		} else if !test.wantError && err != nil {
+			t.Fatalf("Should not be fail: %v", err)
 		}
-	}
-	defer func() {
-		if err := os.RemoveAll(fp); err != nil {
-			t.Fatalf("should not be fail: %v", err)
-		}
-	}()
-	if err := openURL("http://example.com/"); err != nil {
-		t.Fatalf("should be fail: %v", err)
 	}
 }
