@@ -23,18 +23,25 @@ import (
 
 func TestRun(t *testing.T) {
 	tests := []struct {
+		is2Args                      bool
 		isAuthError, isCreateGistErr bool
 		createGistStatusCode         int
 		removeError, runCmdError     error
 		exitCode                     int
 	}{
-		{isAuthError: true, exitCode: 1},
-		{isCreateGistErr: true, createGistStatusCode: http.StatusUnauthorized, removeError: nil},
-		{isCreateGistErr: true, createGistStatusCode: http.StatusUnauthorized, removeError: errors.New("should be error"), exitCode: 1},
-		{isCreateGistErr: true, createGistStatusCode: http.StatusInternalServerError, removeError: nil, exitCode: 1},
-		{isCreateGistErr: true, createGistStatusCode: http.StatusUnauthorized, removeError: nil},
+		{is2Args: true, isAuthError: true, exitCode: 1},
+		{isCreateGistErr: true,
+			createGistStatusCode: http.StatusUnauthorized, removeError: nil},
+		{isCreateGistErr: true,
+			createGistStatusCode: http.StatusUnauthorized, removeError: errors.New("should be error"), exitCode: 1},
+		{isCreateGistErr: true,
+			createGistStatusCode: http.StatusInternalServerError, removeError: nil, exitCode: 1},
+		{isCreateGistErr: true,
+			createGistStatusCode: http.StatusUnauthorized, removeError: nil},
 		{runCmdError: errors.New("should be error")},
 	}
+
+	defer func(old []string) { os.Args = old }(os.Args)
 
 	tmpReadUsername := readUsername
 	tmpReadPassword := readPassword
@@ -66,10 +73,12 @@ func TestRun(t *testing.T) {
 			}
 		}))
 		defer ts.Close()
-
 		*apiRawurl = ts.URL + "/"
-		defer func(old []string) { os.Args = old }(os.Args)
-		os.Args = []string{"gistup", "README.md"}
+
+		os.Args = []string{"gistup"}
+		if test.is2Args {
+			os.Args = append(os.Args, "README.md")
+		}
 		flag.Parse()
 
 		runCmd = func(c *exec.Cmd) error { return test.runCmdError }
