@@ -44,11 +44,6 @@ var (
 )
 
 func main() {
-	setup()
-	os.Exit(run())
-}
-
-func setup() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", os.Args[0]))
 	flag.Usage = func() {
@@ -64,6 +59,7 @@ func setup() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	os.Exit(run())
 }
 
 func run() int {
