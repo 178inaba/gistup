@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -21,33 +22,61 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"files":{"README.md":{"content":"# gistup"}},
-			"html_url":"https://gist.github.com/1234567890abcdefghij"}`)
-	}))
-	defer ts.Close()
+	tests := []struct {
+		isAuthError, isCreateGistErr bool
+		createGistStatusCode         int
+		removeError, runCmdError     error
+		exitCode                     int
+	}{
+		{isAuthError: true, exitCode: 1},
+		{isCreateGistErr: true, createGistStatusCode: http.StatusUnauthorized, removeError: nil},
+		{isCreateGistErr: true, createGistStatusCode: http.StatusUnauthorized, removeError: errors.New("should be error"), exitCode: 1},
+		{isCreateGistErr: true, createGistStatusCode: http.StatusInternalServerError, removeError: nil, exitCode: 1},
+		{isCreateGistErr: true, createGistStatusCode: http.StatusUnauthorized, removeError: nil},
+		{runCmdError: errors.New("should be error")},
+	}
 
-	*apiRawurl = ts.URL + "/"
 	tmpReadUsername := readUsername
 	tmpReadPassword := readPassword
 	tmpRunCmd := runCmd
+	tmpRemoveFile := removeFile
 	tmpMkdirAll := mkdirAll
 	tmpWriteFile := writeFile
 	defer func() {
 		readUsername = tmpReadUsername
 		readPassword = tmpReadPassword
 		runCmd = tmpRunCmd
+		removeFile = tmpRemoveFile
 		mkdirAll = tmpMkdirAll
 		writeFile = tmpWriteFile
 	}()
 	readUsername = func(t *tty.TTY) (string, error) { return "", nil }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
-	runCmd = func(c *exec.Cmd) error { return nil }
 	mkdirAll = func(path string, perm os.FileMode) error { return nil }
 	writeFile = func(filename string, data []byte, perm os.FileMode) error { return nil }
 
-	if got, want := run(), 0; got != want {
-		t.Fatalf("run exit code %d, want %d", got, want)
+	for _, test := range tests {
+		isCreateGistErr := test.isCreateGistErr
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if test.isAuthError && r.URL.Path == "/authorizations" {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			} else if isCreateGistErr && r.URL.Path == "/gists" {
+				http.Error(w, http.StatusText(test.createGistStatusCode), test.createGistStatusCode)
+				isCreateGistErr = false
+			}
+		}))
+		defer ts.Close()
+
+		*apiRawurl = ts.URL + "/"
+		defer func(old []string) { os.Args = old }(os.Args)
+		os.Args = []string{"gistup", "README.md"}
+		flag.Parse()
+
+		runCmd = func(c *exec.Cmd) error { return test.runCmdError }
+		removeFile = func(name string) error { return test.removeError }
+		if got, want := run(), test.exitCode; got != want {
+			t.Fatalf("run exit code %d, want %d", got, want)
+		}
 	}
 }
 

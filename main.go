@@ -37,6 +37,7 @@ var (
 	readUsername = func(t *tty.TTY) (string, error) { return t.ReadString() }
 	readPassword = func(t *tty.TTY) (string, error) { return t.ReadPasswordNoEcho() }
 	runCmd       = func(c *exec.Cmd) error { return c.Run() }
+	removeFile   = func(name string) error { return os.Remove(name) }
 	mkdirAll     = func(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
 	writeFile    = func(filename string, data []byte, perm os.FileMode) error {
 		return ioutil.WriteFile(filename, data, perm)
@@ -101,7 +102,7 @@ reAuth:
 		if errResp, ok := err.(*github.ErrorResponse); ok &&
 			errResp.Response.StatusCode == http.StatusUnauthorized {
 			// Remove bad token file.
-			if err := os.Remove(tokenFilePath); err != nil {
+			if err := removeFile(tokenFilePath); err != nil {
 				log.Print(err)
 				return 1
 			}
