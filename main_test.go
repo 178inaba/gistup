@@ -18,7 +18,6 @@ import (
 
 	"github.com/google/go-github/github"
 	tty "github.com/mattn/go-tty"
-	uuid "github.com/satori/go.uuid"
 )
 
 func TestRun(t *testing.T) {
@@ -62,7 +61,7 @@ func TestRun(t *testing.T) {
 	mkdirAll = func(path string, perm os.FileMode) error { return nil }
 	writeFile = func(filename string, data []byte, perm os.FileMode) error { return nil }
 
-	for _, test := range tests {
+	for i, test := range tests {
 		isCreateGistErr := test.isCreateGistErr
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if test.isAuthError && r.URL.Path == "/authorizations" {
@@ -84,7 +83,7 @@ func TestRun(t *testing.T) {
 		runCmd = func(c *exec.Cmd) error { return test.runCmdError }
 		removeFile = func(name string) error { return test.removeError }
 		if got, want := run(), test.exitCode; got != want {
-			t.Fatalf("run exit code %d, want %d", got, want)
+			t.Fatalf("[%d] run exit code %d, want %d", i+1, got, want)
 		}
 	}
 }
@@ -119,8 +118,13 @@ func TestGetClientWithToken(t *testing.T) {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
+	td, err := ioutil.TempDir("", "gistup")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	fp := filepath.Join(td, "token")
+
 	*isAnonymous = false
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
 	readUsername = func(t *tty.TTY) (string, error) { return "", io.EOF }
 	readPassword = func(t *tty.TTY) (string, error) { return "", nil }
 	if _, err := getClientWithToken(context.Background(), fp); err == nil {
@@ -164,12 +168,17 @@ func TestGetToken(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	td, err := ioutil.TempDir("", "gistup")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	fp := filepath.Join(td, "token")
+
 	if err := ioutil.WriteFile(fp, []byte(""), 0600); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
-		if err := os.Remove(fp); err != nil {
+		if err := os.RemoveAll(td); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
@@ -222,12 +231,18 @@ func TestPrompt(t *testing.T) {
 
 func TestSaveToken(t *testing.T) {
 	token := "foobar"
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+
+	td, err := ioutil.TempDir("", "gistup")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	fp := filepath.Join(td, "token")
+
 	if err := saveToken(token, fp); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
-		if err := os.Remove(fp); err != nil {
+		if err := os.RemoveAll(td); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
@@ -260,12 +275,17 @@ func TestSaveToken(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	errFP := filepath.Join(os.TempDir(), uuid.NewV4().String(), uuid.NewV4().String())
+	errTD, err := ioutil.TempDir("", "gistup")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	errFP := filepath.Join(errTD, "token")
+
 	if err := os.MkdirAll(errFP, 0700); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(filepath.Dir(errFP)); err != nil {
+		if err := os.RemoveAll(errTD); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
@@ -275,8 +295,8 @@ func TestSaveToken(t *testing.T) {
 }
 
 func TestCreateGist(t *testing.T) {
-	filename := uuid.NewV4().String()
-	tc := "foobar"
+	filename := "test.md"
+	tc := "# foobar"
 	canErr := true
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if canErr {
@@ -303,12 +323,17 @@ func TestCreateGist(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	fp := filepath.Join(os.TempDir(), filename)
+	td, err := ioutil.TempDir("", "gistup")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+
+	fp := filepath.Join(td, filename)
 	if err := ioutil.WriteFile(fp, []byte(tc), 0400); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
-		if err := os.Remove(fp); err != nil {
+		if err := os.RemoveAll(td); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()
@@ -331,13 +356,18 @@ func TestCreateGist(t *testing.T) {
 }
 
 func TestReadFile(t *testing.T) {
-	fp := filepath.Join(os.TempDir(), uuid.NewV4().String())
+	td, err := ioutil.TempDir("", "gistup")
+	if err != nil {
+		t.Fatalf("should not be fail: %v", err)
+	}
+	fp := filepath.Join(td, "token")
+
 	tc := "foobar"
 	if err := ioutil.WriteFile(fp, []byte(tc), 0400); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
-		if err := os.Remove(fp); err != nil {
+		if err := os.RemoveAll(td); err != nil {
 			t.Fatalf("should not be fail: %v", err)
 		}
 	}()

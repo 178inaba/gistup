@@ -18,9 +18,9 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/google/go-github/github"
+	"github.com/google/uuid"
 	tty "github.com/mattn/go-tty"
 	homedir "github.com/mitchellh/go-homedir"
-	uuid "github.com/satori/go.uuid"
 )
 
 const tokenFileEdgePath = "gistup/token"
@@ -182,14 +182,21 @@ func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (strin
 		t.Transport =
 			&http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	}
+
 	c := github.NewClient(t.Client())
 	if apiURL != nil {
 		c.BaseURL = apiURL
 	}
+
+	u, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+
 	a, _, err := c.Authorizations.Create(ctx, &github.AuthorizationRequest{
 		Scopes:      []github.Scope{"gist"},
 		Note:        github.String("gistup"),
-		Fingerprint: github.String(uuid.NewV4().String()),
+		Fingerprint: github.String(u.String()),
 	})
 	if err != nil {
 		return "", err
