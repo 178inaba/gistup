@@ -10,5 +10,5 @@ require (
 	github.com/mattn/go-tty v0.0.0-20190424173100-523744f04859
 	github.com/mitchellh/go-homedir v1.1.0
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20191022100944-742c48ecaeb7 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 )
