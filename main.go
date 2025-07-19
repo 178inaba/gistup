@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,10 +14,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"golang.org/x/oauth2"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v73/github"
 	"github.com/google/uuid"
 	tty "github.com/mattn/go-tty"
 	homedir "github.com/mitchellh/go-homedir"
@@ -40,7 +41,7 @@ var (
 	removeFile   = func(name string) error { return os.Remove(name) }
 	mkdirAll     = func(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
 	writeFile    = func(filename string, data []byte, perm os.FileMode) error {
-		return ioutil.WriteFile(filename, data, perm)
+		return os.WriteFile(filename, data, perm)
 	}
 )
 
@@ -67,7 +68,7 @@ func run() int {
 	args := flag.Args()
 	var stdinContent string
 	if len(args) == 0 {
-		bs, err := ioutil.ReadAll(os.Stdin)
+		bs, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			log.Print(err)
 			return 1
@@ -163,8 +164,7 @@ func getClientWithToken(ctx context.Context, tokenFilePath string) (*github.Clie
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: tr})
 	}
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	c := github.NewClient(oauth2.NewClient(ctx, ts))
+	c := github.NewClient(nil).WithAuthToken(strings.TrimSpace(token))
 	if apiURL != nil {
 		c.BaseURL = apiURL
 	}
@@ -193,10 +193,10 @@ func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (strin
 		return "", err
 	}
 
-	a, _, err := c.Authorizations.Create(ctx, &github.AuthorizationRequest{
+	a, _, err := c.Authorizations.CreateImpersonation(ctx, username, &github.AuthorizationRequest{
 		Scopes:      []github.Scope{"gist"},
-		Note:        github.String("gistup"),
-		Fingerprint: github.String(u.String()),
+		Note:        github.Ptr("gistup"),
+		Fingerprint: github.Ptr(u.String()),
 	})
 	if err != nil {
 		return "", err
@@ -286,11 +286,11 @@ func createGist(ctx context.Context, filenames []string, stdinContent string, gi
 			}
 
 			files[github.GistFilename(filepath.Base(filename))] =
-				github.GistFile{Content: github.String(content)}
+				github.GistFile{Content: github.Ptr(content)}
 		}
 	} else {
 		files[github.GistFilename(*stdinFilename)] =
-			github.GistFile{Content: github.String(stdinContent)}
+			github.GistFile{Content: github.Ptr(stdinContent)}
 	}
 
 	g, _, err := gists.Create(ctx, &github.Gist{
@@ -312,7 +312,7 @@ func readFile(fp string) (string, error) {
 	}
 	defer f.Close()
 
-	bs, err := ioutil.ReadAll(f)
+	bs, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
 	}

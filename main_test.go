@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -16,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v73/github"
 	tty "github.com/mattn/go-tty"
 )
 
@@ -118,7 +117,7 @@ func TestGetClientWithToken(t *testing.T) {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
-	td, err := ioutil.TempDir("", "gistup")
+	td, err := os.MkdirTemp("", "gistup")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -168,13 +167,13 @@ func TestGetToken(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	td, err := ioutil.TempDir("", "gistup")
+	td, err := os.MkdirTemp("", "gistup")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	fp := filepath.Join(td, "token")
 
-	if err := ioutil.WriteFile(fp, []byte(""), 0600); err != nil {
+	if err := os.WriteFile(fp, []byte(""), 0600); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
@@ -232,7 +231,7 @@ func TestPrompt(t *testing.T) {
 func TestSaveToken(t *testing.T) {
 	token := "foobar"
 
-	td, err := ioutil.TempDir("", "gistup")
+	td, err := os.MkdirTemp("", "gistup")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -263,7 +262,7 @@ func TestSaveToken(t *testing.T) {
 	if mode != 0600 {
 		t.Fatalf("want %#o but %#o", 0600, mode)
 	}
-	bs, err := ioutil.ReadAll(f)
+	bs, err := io.ReadAll(f)
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -275,7 +274,7 @@ func TestSaveToken(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	errTD, err := ioutil.TempDir("", "gistup")
+	errTD, err := os.MkdirTemp("", "gistup")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
@@ -323,13 +322,13 @@ func TestCreateGist(t *testing.T) {
 		t.Fatalf("should be fail: %v", err)
 	}
 
-	td, err := ioutil.TempDir("", "gistup")
+	td, err := os.MkdirTemp("", "gistup")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 
 	fp := filepath.Join(td, filename)
-	if err := ioutil.WriteFile(fp, []byte(tc), 0400); err != nil {
+	if err := os.WriteFile(fp, []byte(tc), 0400); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
@@ -356,14 +355,14 @@ func TestCreateGist(t *testing.T) {
 }
 
 func TestReadFile(t *testing.T) {
-	td, err := ioutil.TempDir("", "gistup")
+	td, err := os.MkdirTemp("", "gistup")
 	if err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	fp := filepath.Join(td, "token")
 
 	tc := "foobar"
-	if err := ioutil.WriteFile(fp, []byte(tc), 0400); err != nil {
+	if err := os.WriteFile(fp, []byte(tc), 0400); err != nil {
 		t.Fatalf("should not be fail: %v", err)
 	}
 	defer func() {
