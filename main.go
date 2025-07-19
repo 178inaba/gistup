@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -40,7 +40,7 @@ var (
 	removeFile   = func(name string) error { return os.Remove(name) }
 	mkdirAll     = func(path string, perm os.FileMode) error { return os.MkdirAll(path, perm) }
 	writeFile    = func(filename string, data []byte, perm os.FileMode) error {
-		return ioutil.WriteFile(filename, data, perm)
+		return os.WriteFile(filename, data, perm)
 	}
 )
 
@@ -67,7 +67,7 @@ func run() int {
 	args := flag.Args()
 	var stdinContent string
 	if len(args) == 0 {
-		bs, err := ioutil.ReadAll(os.Stdin)
+		bs, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			log.Print(err)
 			return 1
@@ -312,7 +312,7 @@ func readFile(fp string) (string, error) {
 	}
 	defer f.Close()
 
-	bs, err := ioutil.ReadAll(f)
+	bs, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
 	}
