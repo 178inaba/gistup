@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v73/github"
 	tty "github.com/mattn/go-tty"
 )
 

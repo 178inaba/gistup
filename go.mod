@@ -3,7 +3,7 @@ module github.com/178inaba/gistup
 go 1.24.0
 
 require (
-	github.com/google/go-github v17.0.0+incompatible
+	github.com/google/go-github/v73 v73.0.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-tty v0.0.7
 	github.com/mitchellh/go-homedir v1.1.0

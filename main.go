@@ -17,7 +17,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v73/github"
 	"github.com/google/uuid"
 	tty "github.com/mattn/go-tty"
 	homedir "github.com/mitchellh/go-homedir"
@@ -193,10 +193,10 @@ func getToken(ctx context.Context, apiURL *url.URL, tokenFilePath string) (strin
 		return "", err
 	}
 
-	a, _, err := c.Authorizations.Create(ctx, &github.AuthorizationRequest{
+	a, _, err := c.Authorizations.CreateImpersonation(ctx, username, &github.AuthorizationRequest{
 		Scopes:      []github.Scope{"gist"},
-		Note:        github.String("gistup"),
-		Fingerprint: github.String(u.String()),
+		Note:        github.Ptr("gistup"),
+		Fingerprint: github.Ptr(u.String()),
 	})
 	if err != nil {
 		return "", err
@@ -286,11 +286,11 @@ func createGist(ctx context.Context, filenames []string, stdinContent string, gi
 			}
 
 			files[github.GistFilename(filepath.Base(filename))] =
-				github.GistFile{Content: github.String(content)}
+				github.GistFile{Content: github.Ptr(content)}
 		}
 	} else {
 		files[github.GistFilename(*stdinFilename)] =
-			github.GistFile{Content: github.String(stdinContent)}
+			github.GistFile{Content: github.Ptr(stdinContent)}
 	}
 
 	g, _, err := gists.Create(ctx, &github.Gist{
