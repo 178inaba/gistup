@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"golang.org/x/oauth2"
 
@@ -163,8 +164,7 @@ func getClientWithToken(ctx context.Context, tokenFilePath string) (*github.Clie
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: tr})
 	}
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	c := github.NewClient(oauth2.NewClient(ctx, ts))
+	c := github.NewClient(nil).WithAuthToken(strings.TrimSpace(token))
 	if apiURL != nil {
 		c.BaseURL = apiURL
 	}
